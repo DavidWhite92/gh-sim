@@ -1,0 +1,682 @@
+"use client";
+
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { initGame, playNextGala } from "@/lib/sim";
+import type { GameState } from "@/lib/types";
+import { ResultsTable } from "@/components/ResultsTable";
+import { GalaSummary } from "@/components/GalaSummary";
+
+// --- Guardar / Cargar edición (código portable + guardado local) ---
+// Nota: el código puede ser largo si el estado/timeline es grande.
+// Para "guardar de verdad" sin copiar nada, se usa localStorage.
+const CODE_PREFIX_V1 = "GHSIM1.";
+const PENDING_CODE_KEY = "ghsim_pending_load_code_v1";
+const LOCAL_SAVE_KEY = "ghsim_saved_state_code_v1";
+
+function bytesToBase64Url(bytes: Uint8Array) {
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlToBytes(b64urlRaw: string) {
+  const b64url = (b64urlRaw || "").replace(/\s+/g, "");
+  const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64url.length / 4) * 4, "=");
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function persistCodeToLocalStorage(code: string) {
+  try {
+    window.localStorage.setItem(LOCAL_SAVE_KEY, code);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readCodeFromLocalStorage(): string {
+  try {
+    return window.localStorage.getItem(LOCAL_SAVE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function encodeStateToCode(state: GameState) {
+  const payload = { v: 1, state };
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  return CODE_PREFIX_V1 + bytesToBase64Url(bytes);
+}
+
+function decodeStateFromCode(codeRaw: string): GameState | null {
+  const input = (codeRaw || "").trim();
+  if (!input) return null;
+
+  const body = (input.startsWith(CODE_PREFIX_V1) ? input.slice(CODE_PREFIX_V1.length) : input).replace(/\s+/g, "");
+
+  try {
+    const bytes = base64UrlToBytes(body);
+    const json = new TextDecoder().decode(bytes);
+    const parsed = JSON.parse(json) as any;
+    const state = (parsed?.state ?? parsed) as GameState;
+
+    // Validación mínima
+    if (!state || typeof (state as any).seed !== "number") return null;
+    if (!Array.isArray((state as any).contestants)) return null;
+    if (!(state as any).timeline) return null;
+
+    return state;
+  } catch {
+    return null;
+  }
+}
+
+const REVEAL_LINES = [
+  "LA AUDIENCIA...",
+  "HA DECIDIDO...",
+  "QUE DEBE...",
+  "ABANDONAR...",
+  "LA CASA...",
+];
+
+const FINAL_THIRD_LINES = [
+  "LA AUDIENCIA...",
+  "HA DECIDIDO...",
+  "QUE EL/LA...",
+  "TERCER FINALISTA...",
+  "SEA...",
+];
+
+const FINAL_WIN_LINES = [
+  "LA AUDIENCIA...",
+  "HA DECIDIDO...",
+  "QUE EL/LA GANADOR/A",
+  "DE GRAN HERMANO...",
+  "SEA...",
+];
+
+function fullSentence() {
+  return "La audiencia ha decidido que debe abandonar la casa";
+}
+
+
+
+export default function SimulatorClient() {
+  const params = useSearchParams();
+  const router = useRouter();
+
+  const setup = params.get("setup");
+  const initial = useMemo(() => {
+    if (!setup) return null;
+    try {
+      const parsed = JSON.parse(decodeURIComponent(setup));
+      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed);
+    } catch {
+      return null;
+    }
+  }, [setup]);
+
+  const [state, setState] = useState<GameState | null>(initial);
+
+
+
+  useEffect(() => {
+    if (initial) setState(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setup]);
+
+  // Cargar edición desde código (URL o sessionStorage)
+  const codeParam = params.get("code");
+  const loadFlag = params.get("load");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const pending = loadFlag === "1" ? window.sessionStorage.getItem(PENDING_CODE_KEY) : null;
+    const raw = (codeParam && codeParam.trim()) || (pending && pending.trim()) || "";
+    if (!raw) return;
+
+    
+    const loaded = decodeStateFromCode(raw);
+    if (!loaded) {
+      alert("El código no es válido o está corrupto.");
+      return;
+    }
+
+    setState(loaded);
+    resetUiForLoadedState();
+
+    if (pending) window.sessionStorage.removeItem(PENDING_CODE_KEY);
+
+    // limpia el flag de la URL para que no se recargue en bucle
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("load");
+      url.searchParams.delete("code");
+      window.history.replaceState({}, "", url.toString());
+    } catch {
+      // noop
+    }
+    
+  }, [codeParam, loadFlag]);
+
+  // Expulsión reveal
+  const [evictStep, setEvictStep] = useState(0); // 0..5 text, 5 name, 6 done
+  const [evictDoneForGala, setEvictDoneForGala] = useState<number | null>(null);
+// Final reveal (3º y ganador)
+  const [finalPhase, setFinalPhase] = useState<"third" | "winner" | "done">("third");
+  const [finalStep, setFinalStep] = useState(0); // 0..5 lines, 5 name, 6 done for phase
+  const [finalDoneForGala, setFinalDoneForGala] = useState<number | null>(null);
+
+
+  // Nominaciones reveal
+  const [revealNomCount, setRevealNomCount] = useState(0);
+  const [showDefinitives, setShowDefinitives] = useState(false);
+  const [showLeaderSave, setShowLeaderSave] = useState(false);
+
+  // Table gating
+  const [showTable, setShowTable] = useState(false);
+
+  // Revisión de galas (evita spoilers: solo permite galas ya “cerradas”)
+  const [reviewGalaNumber, setReviewGalaNumber] = useState<number | null>(null);
+
+  const resetUiForLoadedState = () => {
+    setEvictStep(0);
+    setEvictDoneForGala(null);
+    setFinalPhase("third");
+    setFinalStep(0);
+    setFinalDoneForGala(null);
+    setRevealNomCount(0);
+    setShowDefinitives(false);
+    setShowLeaderSave(false);
+    setShowTable(false);
+    setReviewGalaNumber(null);
+  };
+const onSaveCode = async () => {
+  if (!state) return;
+
+  const code = encodeStateToCode(state);
+
+  const ok = persistCodeToLocalStorage(code);
+  if (!ok) {
+    alert("No se pudo guardar en este navegador (probablemente por límite de almacenamiento).\n\nPuedes seguir usando el código manual (copiar/pegar).");
+  }
+
+  try {
+    await navigator.clipboard.writeText(code);
+  } catch {
+    // ignore
+  }
+
+  window.prompt("Copia este código para guardar la edición:", code);
+};
+const onLoadCode = () => {
+  const saved = readCodeFromLocalStorage();
+  const input = window.prompt(
+    saved
+      ? "Pega el código a cargar (o deja vacío para cargar tu último guardado):"
+      : "Pega el código de la edición a cargar:",
+    saved || ""
+  );
+
+  const raw = ((input ?? "").trim() || (saved ?? "").trim());
+  if (!raw) {
+    alert("No hay ninguna edición guardada en este navegador, ni se ha pegado un código.");
+    return;
+  }
+
+  const loaded = decodeStateFromCode(raw);
+  if (!loaded) {
+    alert(
+      "El código no es válido o está corrupto.\n\nConsejos:\n- Asegúrate de copiarlo entero (sin '...').\n- Si lo pegas desde un sitio que lo recorta, usa el portapapeles o un .txt."
+    );
+    return;
+  }
+
+  setState(loaded);
+  resetUiForLoadedState();
+
+  // Guardar como último guardado (también si venía de un código pegado)
+  persistCodeToLocalStorage(encodeStateToCode(loaded));
+};
+
+
+  if (!state) {
+    return (
+      <section className="card cardPad">
+        <div className="row">
+          <div style={{ fontWeight: 900 }}>No hay configuración</div>
+          <div className="spacer" />
+          <button className="btn" onClick={() => router.push("/")}>Volver</button>
+        </div>
+      </section>
+    );
+  }
+
+  const idToName = new Map(state.contestants.map(c => [c.id, c.name]));
+
+  // Galas “revisables”: solo las que ya han llegado a mostrar tabla (evita spoilers)
+  const completedGalaCount = Math.max(0, state.galas.length - (showTable ? 0 : 1));
+  const reviewableGalaNumbers = useMemo(() => {
+    return Array.from({ length: completedGalaCount }, (_, i) => i + 1);
+  }, [completedGalaCount]);
+
+  useEffect(() => {
+    if (reviewGalaNumber != null && reviewGalaNumber > completedGalaCount) setReviewGalaNumber(null);
+  }, [reviewGalaNumber, completedGalaCount]);
+
+  const idToContestant = new Map(state.contestants.map(c => [c.id, c]));
+  const getPhotoUrl = (id: string) => {
+    const c = idToContestant.get(id);
+    if (!c) return "";
+    if (c.photoUrl) return c.photoUrl;
+    // fallback por convención /<seasonId>/<slug>.jpg
+    const seasonId = (c.seasonId ?? "").trim();
+    if (!seasonId) return "";
+    const slug = c.name
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    return `/${seasonId}/${slug}.jpg`;
+  };
+
+  const lastVote: any = (state.publicVotes ?? [])[state.publicVotes.length - 1];
+  const lastGala = state.galas[state.galas.length - 1];
+
+  const lastEvictionGala = (state as any).lastEvictionGala as number | null;
+  const isEvictionToReveal =
+    !!lastVote &&
+    (lastVote.kind ?? "eviction") === "eviction" &&
+    lastVote.galaNumber === lastEvictionGala &&
+    lastVote.galaNumber !== 1 &&
+    evictDoneForGala !== lastVote.galaNumber;
+
+  const isFinalVoteToReveal =
+    !!lastVote &&
+    (lastVote.kind ?? "eviction") === "final" &&
+    finalDoneForGala !== lastVote.galaNumber;
+
+  const isFinalReady = (state as any).finalReady && !((state as any).finished);
+
+  // Eliminados para la UI: durante el reveal NO ponemos gris al expulsado hasta que salga su nombre en pantalla
+  const displayEliminated = useMemo(() => {
+    const set = new Set(state.eliminatedIds);
+    const vote: any = (state.publicVotes ?? [])[state.publicVotes.length - 1];
+    if (!vote) return set;
+
+    // expulsión normal
+    if (isEvictionToReveal && evictStep < 5 && vote.kind !== "final") {
+      set.delete(vote.expelledId);
+    }
+
+    // final: tercer finalista
+    if (isFinalVoteToReveal && finalPhase === "third" && finalStep < 5 && vote.kind === "final") {
+      set.delete(vote.expelledId);
+    }
+
+    return set;
+  }, [state.eliminatedIds, state.publicVotes, isEvictionToReveal, evictStep, isFinalVoteToReveal, finalPhase, finalStep]);
+  const isFinalFinished = !!((state as any).finished);
+
+  // En la gala tras última expulsión, no hay nominaciones: solo finalistas
+  const finalists = (state as any).finalists as string[] | undefined;
+
+  const onCelebrate = () => {
+    // reset pasos UI
+    setEvictStep(0);
+    setRevealNomCount(0);
+    setShowDefinitives(false);
+    setShowLeaderSave(false);
+    setShowTable(false);
+    setFinalPhase("third");
+    setFinalStep(0);
+    setFinalDoneForGala(null);
+
+    const next = playNextGala(state);
+    setState(next);
+  };
+
+  // Control de revelado de nominaciones
+  const hasNomsThisGala = !!lastGala && lastGala.galaNumber === (state.gala - 1) && lastGala.nominations.length > 0;
+  const totalNoms = hasNomsThisGala ? lastGala!.nominations.length : 0;
+
+  const hasLeaderThisGala = !!lastGala?.events.leader;
+
+  const canShowProvisional = hasLeaderThisGala && revealNomCount >= totalNoms;
+  const canShowLeaderSave = hasLeaderThisGala && canShowProvisional; // se muestra tras provisionales (no decimos arriba)
+  const canShowDefinitives = revealNomCount >= totalNoms && (!hasLeaderThisGala || showLeaderSave);
+
+  // Botón celebrar solo cuando ya se han revelado definitivos (o cuando toca final)
+  const canCelebrate =
+    !isFinalFinished &&
+    (
+      (isFinalReady && !isEvictionToReveal && !isFinalVoteToReveal) ||
+      (hasNomsThisGala && canShowDefinitives) ||
+      (!hasNomsThisGala && !isEvictionToReveal && !isFinalReady)
+    );
+
+  const topTitle = isFinalFinished ? "Concurso finalizado" : (isFinalReady ? "Final" : (state.gala === 1 ? "Gala 1: Entrada a la casa" : `Gala actual: ${state.gala}`));
+
+  return (
+    <>
+
+      {/* ROSTER arriba (horizontal 62x62). Gris solo cuando corresponde */}
+      <section className="card cardPad" style={{ paddingTop: 10, paddingBottom: 10 }}>
+        <div className="row" style={{ alignItems: "baseline" }}>
+          <div style={{ fontWeight: 900 }}>Roster</div>
+          <div className="muted" style={{ marginLeft: 10 }}>Fotos arriba (gris si expulsado)</div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            overflowX: "auto",
+            paddingTop: 10,
+            paddingBottom: 4,
+          }}
+        >
+          {state.contestants.map(c => {
+            const isGrey = displayEliminated.has(c.id);
+            const src = getPhotoUrl(c.id);
+            return (
+              <div key={c.id} style={{ width: 62, flex: "0 0 auto" }}>
+                <div
+                  style={{
+                    width: 62,
+                    height: 62,
+                    borderRadius: 14,
+                    overflow: "hidden",
+                    background: "#f3f3f3",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    filter: isGrey ? "grayscale(1)" : "none",
+                    opacity: isGrey ? 0.7 : 1,
+                  }}
+                  title={c.name}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt={c.name}
+                    width={62}
+                    height={62}
+                    style={{ width: 62, height: 62, objectFit: "cover" }}
+                    onError={(e) => {
+                      // fallback a png si venía jpg
+                      const img = e.currentTarget;
+                      if ((img as any).dataset?.fallbackApplied) return;
+                      (img as any).dataset.fallbackApplied = "1";
+                      if (src?.toLowerCase().endsWith(".jpg")) img.src = src.replace(/\.jpg$/i, ".png");
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+{/* Selector de galas (solo galas finalizadas / con tabla revelada) */}
+{reviewableGalaNumbers.length > 0 && (
+  <section className="card cardPad" style={{ paddingTop: 10, paddingBottom: 10 }}>
+    <div className="row" style={{ alignItems: "baseline", flexWrap: "wrap", gap: 10 }}>
+      <div style={{ fontWeight: 900 }}>Revisar gala</div>
+      <div className="muted">Pulsa un número para mostrar/ocultar el resumen</div>
+    </div>
+
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+      {reviewableGalaNumbers.map((n) => {
+        const active = reviewGalaNumber === n;
+        return (
+          <button
+            key={n}
+            className={"btn" + (active ? " btnPrimary" : "")}
+            onClick={() => setReviewGalaNumber((prev) => (prev === n ? null : n))}
+          >
+            Gala {n}
+          </button>
+        );
+      })}
+    </div>
+
+    {reviewGalaNumber != null && (
+      <div style={{ marginTop: 12 }}>
+        <GalaSummary
+          state={state}
+          gala={state.galas[reviewGalaNumber - 1]}
+          revealCount={state.galas[reviewGalaNumber - 1].nominations.length}
+          onNextReveal={() => {}}
+          showProvisional={true}
+          showLeaderSave={true}
+          showDefinitives={true}
+          showTable={true}
+          readOnly
+        />
+      </div>
+    )}
+  </section>
+)}
+      <section className="card cardPad">
+        <div className="row">
+          <div style={{ fontWeight: 900 }}>{topTitle}</div>
+          <span className="badge">Activos: <b>{state.activeIds.length}</b></span>
+
+          <div className="spacer" />
+
+          <button className="btn btnPrimary" disabled={!canCelebrate} onClick={onCelebrate}>
+            {isFinalFinished ? "Concurso finalizado" : (isFinalReady ? "Celebrar final" : "Celebrar gala")}
+          </button>
+
+          <button className="btn" onClick={() => router.push("/")}>Reiniciar</button>
+          <button className="btn" onClick={onSaveCode}>Guardar</button>
+          <button className="btn" onClick={onLoadCode}>Cargar</button>
+        </div>
+
+        {state.gala === 1 && (
+          <>
+            <hr className="soft" />
+            <div className="row">
+              <div style={{ fontWeight: 900 }}>Entran en la casa</div>
+              <span className="muted">Las nominaciones empiezan en la Gala 2</span>
+            </div>
+            <div className="row" style={{ marginTop: 8 }}>
+              {state.contestants.map(c => (
+                <span key={c.id} className="badge">👤 <b>{c.name}</b></span>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Nominados pendientes (solo se muestra si ya se revelaron definitivos) */}
+        {showDefinitives && state.pendingNominees.length > 0 && !isFinalReady && !isFinalFinished && (
+          <>
+            <hr className="soft" />
+            <div className="row">
+              <div style={{ fontWeight: 900 }}>Nominados (pasan a votación)</div>
+              <span className="muted">Se expulsa en la próxima gala</span>
+            </div>
+            <div className="row" style={{ marginTop: 8 }}>
+              {state.pendingNominees.map(id => (
+                <span key={id} className="badge">🔸 <b>{idToName.get(id)}</b></span>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* REVEAL EXPULSIÓN */}
+      {isEvictionToReveal && (
+        <section className="card cardPad" style={{ textAlign: "center" }}>
+          <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1 }}>
+            {evictStep < 5
+              ? REVEAL_LINES[evictStep]
+              : (idToName.get(lastVote.expelledId) ?? "EXPULSADO")}
+          </div>
+
+          <div className="row" style={{ justifyContent: "center", marginTop: 14 }}>
+            <button
+              className="btn btnPrimary"
+              onClick={() => {
+                if (evictStep < 5) setEvictStep(s => s + 1);
+                else {
+                  setEvictDoneForGala(lastVote.galaNumber);
+                  setEvictStep(6);
+                  // tras revelar la expulsión, solo mostramos la tabla si esta expulsión deja la final preparada
+                  if (isFinalReady) setShowTable(true);
+                }
+              }}
+            >
+              {evictStep < 5 ? "Siguiente" : "Continuar"}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Tras revelar expulsión, mostramos la frase completa + nombre */}
+      {lastVote && (lastVote.kind ?? "eviction") === "eviction" && evictDoneForGala === lastVote.galaNumber && (
+        <section className="card cardPad" style={{ textAlign: "center" }}>
+          <div className="muted" style={{ fontSize: 14, marginBottom: 6 }}>{fullSentence()}</div>
+          <div style={{ fontWeight: 900, fontSize: 22 }}>{idToName.get(lastVote.expelledId)}</div>
+
+          {/* Si esta expulsión deja 3, mostramos finalistas */}
+          {isFinalReady && finalists?.length === 3 && (
+            <>
+              <hr className="soft" />
+              <div style={{ fontWeight: 900, marginBottom: 8 }}>Finalistas</div>
+              <div className="row" style={{ justifyContent: "center" }}>
+                {finalists.map(id => (
+                  <span key={id} className="badge">🏁 <b>{idToName.get(id)}</b></span>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+
+      {/* REVEAL FINAL (3º y ganador) */}
+      {isFinalVoteToReveal && (
+        <section className="card cardPad" style={{ textAlign: "center" }}>
+          {(() => {
+            const thirdId = lastVote.expelledId as string;
+            const winnerId = (lastVote.nominees as string[])
+              .slice()
+              .sort((a: string, b: string) => (lastVote.percents[b] ?? 0) - (lastVote.percents[a] ?? 0))[0];
+
+            const lines = finalPhase === "third" ? FINAL_THIRD_LINES : FINAL_WIN_LINES;
+            const nameToShow = finalPhase === "third" ? thirdId : winnerId;
+
+            return (
+              <>
+                <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1 }}>
+                  {finalStep < 5 ? lines[finalStep] : (idToName.get(nameToShow) ?? "")}
+                </div>
+
+                <div className="row" style={{ justifyContent: "center", marginTop: 14 }}>
+                  <button
+                    className="btn btnPrimary"
+                    onClick={() => {
+                      if (finalStep < 5) setFinalStep(s => s + 1);
+                      else {
+                        if (finalPhase === "third") {
+                          setFinalPhase("winner");
+                          setFinalStep(0);
+                        } else {
+                          setFinalPhase("done");
+                          setFinalDoneForGala(lastVote.galaNumber);
+                          setShowTable(true);
+                        }
+                      }
+                    }}
+                  >
+                    {finalStep < 5 ? "Siguiente" : (finalPhase === "third" ? "Continuar" : "Ver resultado")}
+                  </button>
+                </div>
+              </>
+            );
+          })()}
+        </section>
+      )}
+
+      {/* Tras revelar final, mostramos la tabla final */}
+      {lastVote && (lastVote.kind ?? "eviction") === "final" && finalDoneForGala === lastVote.galaNumber && (
+        <section className="card cardPad" style={{ textAlign: "center" }}>
+          <div className="muted" style={{ fontSize: 14, marginBottom: 6 }}>Resultado final</div>
+          <div className="row" style={{ justifyContent: "center" }}>
+            {(() => {
+              const ranked = (lastVote.nominees as string[])
+                .slice()
+                .sort((a: string, b: string) => (lastVote.percents[b] ?? 0) - (lastVote.percents[a] ?? 0));
+              return ranked.map((id: string, i: number) => (
+                <span key={id} className="badge">
+                  {i === 0 ? "🏆" : i === 1 ? "🥈" : "🥉"} <b>{idToName.get(id)}</b>
+                </span>
+              ));
+            })()}
+          </div>
+        </section>
+      )}
+
+      {/* NOMINACIONES: solo si hay gala record y ya no estamos bloqueados por expulsión */}
+      {hasNomsThisGala && !isEvictionToReveal && !isFinalVoteToReveal && (
+        <GalaSummary
+          state={state}
+          gala={lastGala!}
+          revealCount={revealNomCount}
+          onNextReveal={() => {
+            const nextCount = Math.min(totalNoms, revealNomCount + 1);
+            setRevealNomCount(nextCount);
+
+            // cuando termina la última nominación: si hay líder, mostrar provisionales y luego salvación y luego definitivos
+            if (nextCount >= totalNoms) {
+              if (!hasLeaderThisGala) {
+                setShowDefinitives(true);
+                setShowTable(true);
+              }
+            }
+          }}
+          showProvisional={canShowProvisional}
+          showLeaderSave={showLeaderSave}
+          showDefinitives={showDefinitives}
+          showTable={showTable}
+        />
+      )}
+
+      {/* Botón para confirmar salvación del líder y mostrar definitivos */}
+      {hasNomsThisGala && hasLeaderThisGala && !isEvictionToReveal && revealNomCount >= totalNoms && !showLeaderSave && (
+        <section className="card cardPad">
+          <div className="row">
+            <div style={{ fontWeight: 900 }}>Acción del líder</div>
+            <div className="spacer" />
+            <button
+              className="btn btnPrimary"
+              onClick={() => {
+                setShowLeaderSave(true);
+                setShowDefinitives(true);
+                setShowTable(true);
+              }}
+            >
+              Revelar a quién salva
+            </button>
+          </div>
+          <div className="muted" style={{ marginTop: 8 }}>
+            Tras mostrar la salvación se revelan los nominados definitivos.
+          </div>
+        </section>
+      )}
+
+      {/* TABLA: solo cuando ya se revelaron los definitivos */}
+      {showTable && <ResultsTable state={state} />}
+    </>
+  );
+}
