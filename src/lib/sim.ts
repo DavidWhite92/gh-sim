@@ -126,6 +126,15 @@ export function playNextGala(prev: GameState): GameState {
   if ((prev as any).finished) return prev;
 
   const state: GameState = structuredClone(prev);
+
+  // La Gala 1 es solo "entrada a la casa" (sin nominaciones/expulsión).
+  // Para evitar una "gala vacía" en la UI, cuando se celebra la Gala 1
+  // avanzamos inmediatamente a la Gala 2 y ejecutamos sus nominaciones en la
+  // misma llamada.
+  if (state.gala === 1) {
+    state.gala = 2;
+  }
+
   const rand = mulberry32(state.seed + state.gala * 99991);
 
   const galaIndex0 = state.gala - 1;
@@ -194,13 +203,6 @@ export function playNextGala(prev: GameState): GameState {
     }
   }
 
-  // En la Gala 1 solo entran los concursantes: NO hay nominaciones ni expulsión.
-  if (state.gala === 1) {
-    state.gala += 1;
-    return state;
-  }
-
-
   // 2) Nominaciones (si quedan >=4)
   if (state.activeIds.length >= 4) {
     const { points: scheme, min } = getMinNominees(state.activeIds.length);
@@ -208,9 +210,10 @@ export function playNextGala(prev: GameState): GameState {
     const events: GalaRecord["events"] = {};
 
     // Inmunidad aleatoria
+    // Regla: no puede haber inmunidad cuando solo quedan 4 concursantes.
     const IMMUNITY_P = 0.22;
     let immuneId: string | undefined;
-    if (rand() < IMMUNITY_P) {
+    if (state.activeIds.length > 4 && rand() < IMMUNITY_P) {
       immuneId = pickOne(state.activeIds, rand);
       events.immunity = { winnerId: immuneId };
       setStatusForGala(state, immuneId, galaIndex0, "Exento");
@@ -235,7 +238,74 @@ export function playNextGala(prev: GameState): GameState {
 
     if (rand() < LEADER_P && provisional.length > 0) {
       const leaderId = pickOne(state.activeIds, rand);
-      const savedId = pickOne(provisional, rand);
+      const leaderNom = nominations.find(n => n.fromId === leaderId);
+      const leaderGiven = leaderNom?.points ?? {};
+
+      // Regla "Salvación del líder":
+      // - No puede salvar a alguien que haya nominado.
+      // - Si casualmente ha nominado a TODOS los provisionales,
+      //   salva al que menos puntos le haya dado (típicamente 1 punto).
+      // - Si el líder está provisionalmente nominado con un porcentaje/"peso" muy alto,
+      //   se prioriza que se salve a sí mismo (no siempre, pero es muy probable).
+
+      const leaderIsProvisional = provisional.includes(leaderId);
+      // Heurística de "porcentaje alto": si el líder es de los más puntuados entre los provisionales.
+      const provisionalSorted = [...provisional].sort((a, b) => (totals[b] ?? 0) - (totals[a] ?? 0));
+      const leaderRank = provisionalSorted.indexOf(leaderId); // 0 = más alto
+      const leaderHighRisk = leaderIsProvisional && leaderRank >= 0 && leaderRank <= 0; // top 1
+      const leaderMedRisk = leaderIsProvisional && leaderRank >= 0 && leaderRank <= 1; // top 2
+
+      // Candidatos que el líder NO ha nominado
+      const notNominatedByLeader = provisional.filter(id => !(id in leaderGiven));
+
+      let savedId: string;
+
+      // Prioriza auto-salvarse si está nominado con riesgo alto
+      if (leaderIsProvisional) {
+        const pSelf = leaderHighRisk ? 0.9 : leaderMedRisk ? 0.7 : 0.55;
+        if (rand() < pSelf) {
+          savedId = leaderId;
+        } else {
+          // Si no se salva, debe respetar la regla de no salvar a alguien que nominó
+          if (notNominatedByLeader.length > 0) {
+            savedId = pickOne(notNominatedByLeader, rand);
+          } else {
+            // Ha nominado a TODOS los provisionales: salva al que menos puntos dio
+            let minPts = Infinity;
+            let mins: string[] = [];
+            for (const id of provisional) {
+              const pts = leaderGiven[id] ?? Infinity;
+              if (pts < minPts) {
+                minPts = pts;
+                mins = [id];
+              } else if (pts === minPts) {
+                mins.push(id);
+              }
+            }
+            savedId = pickOne(mins.length ? mins : provisional, rand);
+          }
+        }
+      } else {
+        // El líder NO está nominado: salva a alguien que no haya nominado.
+        if (notNominatedByLeader.length > 0) {
+          savedId = pickOne(notNominatedByLeader, rand);
+        } else {
+          // Caso raro: ha nominado a todos los provisionales
+          let minPts = Infinity;
+          let mins: string[] = [];
+          for (const id of provisional) {
+            const pts = leaderGiven[id] ?? Infinity;
+            if (pts < minPts) {
+              minPts = pts;
+              mins = [id];
+            } else if (pts === minPts) {
+              mins.push(id);
+            }
+          }
+          savedId = pickOne(mins.length ? mins : provisional, rand);
+        }
+      }
+
       events.leader = { leaderId, savedId };
 
       finalNominees = provisional.filter(id => id !== savedId);

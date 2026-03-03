@@ -265,13 +265,19 @@ const onLoadCode = () => {
 
   // Galas “revisables”: solo las que ya han llegado a mostrar tabla (evita spoilers)
   const completedGalaCount = Math.max(0, state.galas.length - (showTable ? 0 : 1));
+  const reviewableGalas = useMemo(() => {
+    // state.galas guarda registros reales (en este simulador empiezan en Gala 2).
+    // Mostramos solo las galas ya cerradas y a partir de la 2.
+    return state.galas.slice(0, completedGalaCount).filter(g => g.galaNumber >= 2);
+  }, [state.galas, completedGalaCount]);
+
   const reviewableGalaNumbers = useMemo(() => {
-    return Array.from({ length: completedGalaCount }, (_, i) => i + 1);
-  }, [completedGalaCount]);
+    return reviewableGalas.map(g => g.galaNumber);
+  }, [reviewableGalas]);
 
   useEffect(() => {
-    if (reviewGalaNumber != null && reviewGalaNumber > completedGalaCount) setReviewGalaNumber(null);
-  }, [reviewGalaNumber, completedGalaCount]);
+    if (reviewGalaNumber != null && !reviewableGalaNumbers.includes(reviewGalaNumber)) setReviewGalaNumber(null);
+  }, [reviewGalaNumber, reviewableGalaNumbers]);
 
   const idToContestant = new Map(state.contestants.map(c => [c.id, c]));
   const getPhotoUrl = (id: string) => {
@@ -366,7 +372,13 @@ const onLoadCode = () => {
       (!hasNomsThisGala && !isEvictionToReveal && !isFinalReady)
     );
 
-  const topTitle = isFinalFinished ? "Concurso finalizado" : (isFinalReady ? "Final" : (state.gala === 1 ? "Gala 1: Entrada a la casa" : `Gala actual: ${state.gala}`));
+  // state.gala representa la *siguiente* gala a celebrar (puntero interno).
+  // Para el usuario mostramos la última gala "en curso" (state.gala - 1).
+  const topTitle = isFinalFinished
+    ? "Concurso finalizado"
+    : (isFinalReady
+      ? "Final"
+      : (state.gala === 1 ? "Gala 1: Entrada a la casa" : `Gala actual: ${Math.max(1, state.gala - 1)}`));
 
   return (
     <>
@@ -451,17 +463,23 @@ const onLoadCode = () => {
 
     {reviewGalaNumber != null && (
       <div style={{ marginTop: 12 }}>
-        <GalaSummary
-          state={state}
-          gala={state.galas[reviewGalaNumber - 1]}
-          revealCount={state.galas[reviewGalaNumber - 1].nominations.length}
-          onNextReveal={() => {}}
-          showProvisional={true}
-          showLeaderSave={true}
-          showDefinitives={true}
-          showTable={true}
-          readOnly
-        />
+        {(() => {
+          const galaToShow = state.galas.find(g => g.galaNumber === reviewGalaNumber);
+          if (!galaToShow) return null;
+          return (
+            <GalaSummary
+              state={state}
+              gala={galaToShow}
+              revealCount={galaToShow.nominations.length}
+              onNextReveal={() => {}}
+              showProvisional={true}
+              showLeaderSave={true}
+              showDefinitives={true}
+              showTable={true}
+              readOnly
+            />
+          );
+        })()}
       </div>
     )}
   </section>
