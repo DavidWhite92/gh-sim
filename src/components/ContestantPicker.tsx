@@ -50,6 +50,7 @@ function uniqueName(desired: string, existing: Set<string>) {
  * Fotos: public/gh1, public/gh2 ... public/gh10
  * Por defecto: /<seasonId>/<slug>.jpg (con fallback a .png si falla)
  */
+
 const SEASONS: SeasonDef[] = [
   {
     id: "gh1",
@@ -71,16 +72,89 @@ const SEASONS: SeasonDef[] = [
       { name: "María José", file: "MariaJose.gif", gender: "F" },
     ],
   },
-  { id: "gh2", label: "GH2", contestants: [] },
-  { id: "gh3", label: "GH3", contestants: [] },
-  { id: "gh4", label: "GH4", contestants: [] },
-  { id: "gh5", label: "GH5", contestants: [] },
+  {
+    id: "gh2",
+    label: "GH2",
+    contestants: [
+      { name: "Sabrina", file: "Sabrina.gif", gender: "F" },
+      { name: "Fran", file: "Fran.gif", gender: "M" },
+      { name: "Mari", file: "Mari.gif", gender: "F" },
+      { name: "Ángel", file: "Angel Tous.gif", gender: "M" },
+      { name: "Kaiet", file: "Kaiet.gif", gender: "M" },
+      { name: "Alonso", file: "Alonso.gif", gender: "M" },
+      { name: "Eva P.", file: "Eva Paz.gif", gender: "F" },
+      { name: "Emilio", file: "Emilio.gif", gender: "M" },
+      { name: "Karola", file: "Karola.gif", gender: "F" },
+      { name: "Roberto", file: "Roberto.gif", gender: "M" },
+      { name: "Fayna", file: "Fayna.gif", gender: "F" },
+      { name: "Carlos", file: "Carlos Yoyas.gif", gender: "M" },
+      { name: "Marta", file: "Marta Lopez GH2.gif", gender: "F" },
+    ],
+  },
+  {
+    id: "gh3",
+    label: "GH3",
+    contestants: [
+      { name: "Javito", file: "Javito.gif", gender: "M" },
+      { name: "Patricia L.", file: "Patricia Ledesma.gif", gender: "F" },
+      { name: "Kiko", file: "Kiko H.gif", gender: "M" },
+      { name: "Javier", file: "Javier Estrada.gif", gender: "M" },
+      { name: "Carolina", file: "Carolina.gif", gender: "F" },
+      { name: "Candi", file: "Candi.gif", gender: "F" },
+      { name: "Óscar", file: "Oscar.gif", gender: "M" },
+      { name: "Jorge", file: "Jorge Mozo.gif", gender: "M" },
+      { name: "Elba", file: "Elba.gif", gender: "F" },
+      { name: "Ness", file: "Ness.gif", gender: "M" },
+      { name: "Raquel M.", file: "Raquel.gif", gender: "F" },
+      { name: "Jacinto", file: "Jacinto.gif", gender: "M" },
+      { name: "Noemí", file: "Noemi.gif", gender: "F" },
+    ],
+  },
+  {
+    id: "gh4",
+    label: "GH4",
+    contestants: [
+      { name: "Pedro", file: "Pedro.gif", gender: "M" },
+      { name: "Désirée", file: "Desiree.gif", gender: "F" },
+      { name: "Rafa", file: "Rafa.gif", gender: "M" },
+      { name: "Nacho", file: "Nacho.gif", gender: "M" },
+      { name: "Matías", file: "Matias.gif", gender: "M" },
+      { name: "Inma", file: "Inma.gif", gender: "F" },
+      { name: "Rocío", file: "Rocio.gif", gender: "F" },
+      { name: "Gustavo", file: "Gustavo.gif", gender: "M" },
+      { name: "Judith", file: "Judith.gif", gender: "F" },
+      { name: "Anna", file: "Anna.gif", gender: "F" },
+      { name: "Mario", file: "Mario.gif", gender: "M" },
+      { name: "Sonia", file: "Sonia Arenas.gif", gender: "F" },
+      { name: "María", file: "Maria.gif", gender: "F" },
+    ],
+  },
+  {
+    id: "gh5",
+    label: "GH5",
+    contestants: [
+      { name: "Nuria", file: "Nuria.gif", gender: "F" },
+      { name: "David G.", file: "David Gallardo.gif", gender: "M" },
+      { name: "Julián", file: "Julian.gif", gender: "M" },
+      { name: "Ainhoa", file: "Ainhoa.gif", gender: "F" },
+      { name: "Denis", file: "Denis.gif", gender: "M" },
+      { name: "Laura U.", file: "Laura Ureña.gif", gender: "F" },
+      { name: "Nico", file: "Nico.gif", gender: "M" },
+      { name: "Ramón", file: "Ramon.gif", gender: "M" },
+      { name: "Vanessa Galindo", file: "Vanessa Galindo.gif", gender: "F" },
+      { name: "Bea Cárdenas", file: "Bea Cardenas.gif", gender: "F" },
+      { name: "Carla", file: "Carla.gif", gender: "F" },
+      { name: "Luhay", file: "Luhay.gif", gender: "M" },
+      { name: "Aída", file: "Aida.gif", gender: "F" },
+    ],
+  },
   { id: "gh6", label: "GH6", contestants: [] },
   { id: "gh7", label: "GH7", contestants: [] },
   { id: "gh8", label: "GH8", contestants: [] },
   { id: "gh9", label: "GH9", contestants: [] },
   { id: "gh10", label: "GH10", contestants: [] },
 ];
+
 
 export function ContestantPicker({
   onStart,
