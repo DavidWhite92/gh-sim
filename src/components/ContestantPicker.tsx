@@ -125,7 +125,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Judith", file: "Judith.gif", gender: "F" },
       { name: "Anna", file: "Anna.gif", gender: "F" },
       { name: "Mario", file: "Mario.gif", gender: "M" },
-      { name: "Sonia", file: "Sonia Arenas.gif", gender: "F" },
+      { name: "Sonia A.", file: "Sonia Arenas.gif", gender: "F" },
       { name: "María M.", file: "Maria.gif", gender: "F" },
     ],
   },
@@ -387,7 +387,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Loli P.", file: "Loligh15.gif", gender: "F" },
       { name: "Shaima", file: "Shaima.gif", gender: "F" },
       { name: "Alfredo", file: "Alfredo.gif", gender: "M" },
-      { name: "Lucía P.", file: "Luciagh15.gif", gender: "F" },
+      { name: "Lucía P.", file: "Lucíagh15.gif", gender: "F" },
       { name: "Mayca P.", file: "Maycagh15.gif", gender: "F" },
       { name: "Paco", file: "Pacogh15.gif", gender: "M" },
       { name: "José C.", file: "Josegh15.gif", gender: "M" },
@@ -499,7 +499,7 @@ export function ContestantPicker({
       return;
     }
 
-    if (selected.length >= 20) return;
+    if (selected.length >= 25) return;
     setSelected((prev) => [...prev, setup]);
   }
 
@@ -584,7 +584,7 @@ export function ContestantPicker({
   }
 
   function pickRandom() {
-    if (selected.length >= 20) return;
+    if (selected.length >= 25) return;
 
     const pool: ContestantSetup[] = [];
     for (const s of SEASONS) {
@@ -636,12 +636,12 @@ export function ContestantPicker({
 
           <button
             onClick={pickRandom}
-            disabled={selected.length >= 20}
+            disabled={selected.length >= 25}
             style={{
               padding: "12px 16px",
               borderRadius: 12,
               border: "1px solid #ddd",
-              cursor: selected.length >= 20 ? "not-allowed" : "pointer",
+              cursor: selected.length >= 25 ? "not-allowed" : "pointer",
               background: "#111",
               color: "#fff",
               fontWeight: 900,
@@ -785,7 +785,7 @@ export function ContestantPicker({
                         <button
                           key={key}
                           onClick={() => togglePick(setup)}
-                          disabled={!picked && selected.length >= 20}
+                          disabled={!picked && selected.length >= 25}
                           style={{
                             display: "flex",
                             gap: 10,
@@ -796,8 +796,8 @@ export function ContestantPicker({
                             border: "1px solid #e6e6e6",
                             background: picked ? "#111" : "#fff",
                             color: picked ? "#fff" : "#111",
-                            cursor: !picked && selected.length >= 20 ? "not-allowed" : "pointer",
-                            opacity: !picked && selected.length >= 20 ? 0.6 : 1,
+                            cursor: !picked && selected.length >= 25 ? "not-allowed" : "pointer",
+                            opacity: !picked && selected.length >= 25 ? 0.6 : 1,
                           }}
                           title={picked ? "Quitar" : "Añadir"}
                         >
@@ -853,7 +853,7 @@ export function ContestantPicker({
                         <button
                           key={key}
                           onClick={() => togglePick(setup)}
-                          disabled={!picked && selected.length >= 20}
+                          disabled={!picked && selected.length >= 25}
                           style={{
                             display: "flex",
                             gap: 10,
@@ -864,8 +864,8 @@ export function ContestantPicker({
                             border: "1px solid #e6e6e6",
                             background: picked ? "#111" : "#fff",
                             color: picked ? "#fff" : "#111",
-                            cursor: !picked && selected.length >= 20 ? "not-allowed" : "pointer",
-                            opacity: !picked && selected.length >= 20 ? 0.6 : 1,
+                            cursor: !picked && selected.length >= 25 ? "not-allowed" : "pointer",
+                            opacity: !picked && selected.length >= 25 ? 0.6 : 1,
                           }}
                           title={picked ? "Quitar" : "Añadir"}
                         >
