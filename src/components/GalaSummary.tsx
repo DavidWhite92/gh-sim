@@ -98,11 +98,15 @@ export function GalaSummary({
           Nominaciones ({Math.min(revealCount, gala.nominations.length)}/{gala.nominations.length})
         </div>
 
+        <div className="muted" style={{ fontSize: 12 }}>
+          Las parejas, conexiones y pactos se respetan. Si faltan objetivos disponibles, se reparten menos votos.
+        </div>
         {gala.nominations.slice(0, revealCount).map(n => {
           const entries = Object.entries(n.points).sort((a, b) => b[1] - a[1]);
           return (
             <div key={n.fromId} className="badge" style={{ borderRadius: 14 }}>
               <b>{idToName.get(n.fromId)}</b>:{" "}
+              {entries.length === 0 && <span>Sin votos: sus vínculos protegen a los participantes disponibles.</span>}
               {entries.map(([toId, pts], i) => (
                 <span key={toId}>
                   {i > 0 ? " · " : ""}

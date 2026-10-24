@@ -1,45 +1,47 @@
 import type { GameState, HouseEvent, HouseRound } from "./types";
 import { shuffle } from "./rng";
 
-type EventTemplate = {
-  title: string;
-  description: string;
-  min: number;
-  max: number;
-  impact: [number, number];
-  conflict?: boolean;
-};
-
-const templates: EventTemplate[] = [
-  { title: "Un gesto de cariño", description: "Prepara una sorpresa para animar a la casa. El público valora el detalle.", min: 1, max: 1, impact: [3, 6] },
-  { title: "Una historia que emociona", description: "Comparte una vivencia personal y conecta con la audiencia.", min: 1, max: 1, impact: [7, 12] },
-  { title: "Talento inesperado", description: "Sorprende con una actuación improvisada que se convierte en el momento de la noche.", min: 1, max: 1, impact: [5, 9] },
-  { title: "Trabajo silencioso", description: "Se encarga de las tareas que nadie quería hacer. Fuera de la casa, el gesto no pasa desapercibido.", min: 1, max: 1, impact: [2, 5] },
-  { title: "Una amistad que conquista", description: "Comparten una conversación sincera y se apoyan en un momento difícil.", min: 2, max: 2, impact: [4, 8] },
-  { title: "Reconciliación", description: "Aparcan sus diferencias y se piden disculpas. La audiencia aprecia su actitud.", min: 2, max: 2, impact: [5, 10] },
-  { title: "Noche de risas", description: "Improvisan un pequeño espectáculo y contagian su buen humor al público.", min: 2, max: 3, impact: [3, 7] },
-  { title: "Un equipo solidario", description: "Se organizan para ayudar en las tareas y consiguen mejorar la convivencia.", min: 3, max: 3, impact: [4, 8] },
-  { title: "Una prueba memorable", description: "Remontan una prueba que parecía perdida. Su esfuerzo en equipo entusiasma a la audiencia.", min: 4, max: 6, impact: [8, 14] },
-  { title: "Apoyo en un día difícil", description: "Se unen para cuidar del ánimo de la casa. El público celebra su empatía.", min: 3, max: 5, impact: [6, 11] },
-  { title: "Malas formas", description: "Responde con desprecio a una petición cotidiana y recibe críticas del público.", min: 1, max: 1, impact: [-8, -4] },
-  { title: "Tareas sin hacer", description: "Evita su turno de limpieza y deja el trabajo a los demás. La audiencia lo penaliza.", min: 1, max: 1, impact: [-5, -2] },
-  { title: "Exceso de confianza", description: "Da por hecho que tiene la victoria asegurada. Sus comentarios caen mal fuera de la casa.", min: 1, max: 1, impact: [-10, -5] },
-  { title: "Una mentira al descubierto", description: "Queda en evidencia al contradecir su propia versión de los hechos. Pierde credibilidad ante el público.", min: 1, max: 1, impact: [-14, -8] },
-  { title: "Discusión en la cocina", description: "Se enfrentan por el reparto de la comida. Las malas formas disgustan al público y dejan tensión entre ellos.", min: 2, max: 2, impact: [-9, -4], conflict: true },
-  { title: "Choque por la limpieza", description: "Se reprochan las tareas pendientes en una discusión que termina con gritos.", min: 2, max: 3, impact: [-8, -3], conflict: true },
-  { title: "Rumores a espaldas", description: "Difunden un rumor sin comprobarlo. La audiencia rechaza su comportamiento.", min: 2, max: 3, impact: [-11, -6] },
-  { title: "Una broma que sale mal", description: "Llevan una broma demasiado lejos y no saben reconocer el error. El público muestra su descontento.", min: 2, max: 3, impact: [-10, -5] },
-  { title: "La casa estalla", description: "Una discusión colectiva desborda la convivencia. Los reproches cruzados provocan un fuerte rechazo fuera.", min: 4, max: 6, impact: [-15, -9], conflict: true },
-  { title: "Pacto descubierto", description: "Sale a la luz un pacto para manipular la convivencia. La audiencia castiga a sus participantes.", min: 3, max: 5, impact: [-13, -7] },
-];
+import { templates } from "./houseEventCatalog";
+import { moreEvents } from "./moreEvents";
 
 export function generateHouseRound(state: GameState, rand: () => number): HouseRound {
-  const count = 1 + Math.floor(rand() * 4);
-  const available = shuffle(templates.filter(t => t.min <= state.activeIds.length), rand);
-  const events: HouseEvent[] = available.slice(0, count).map(template => {
-    const max = Math.min(template.max, state.activeIds.length);
-    const size = template.min + Math.floor(rand() * (max - template.min + 1));
-    const participantIds = shuffle(state.activeIds, rand).slice(0, size);
+  const count = 4 + Math.floor(rand() * 5);
+  state.couples = (state.couples ?? []).filter(pair => pair.every(id => state.activeIds.includes(id)));
+  const recentTitles = new Set(state.houseRounds.slice(-3).flatMap(round => round.events.map(event => event.title)));
+  const seenTitles = new Set(state.houseRounds.flatMap(round => round.events.map(event => event.title)));
+  const available = shuffle([...templates, ...moreEvents].filter(t => t.min <= state.activeIds.length), rand)
+    .sort((a, b) => (recentTitles.has(a.title) ? 2 : seenTitles.has(a.title) ? 1 : 0)
+      - (recentTitles.has(b.title) ? 2 : seenTitles.has(b.title) ? 1 : 0));
+  const events: HouseEvent[] = [];
+  const romanticChanges = new Set<string>();
+  for (const template of available) {
+    if (events.length === count) break;
+    let participantIds: string[];
+    if (template.effect === "breakup") {
+      const pairs = state.couples.filter(pair => pair.every(id => !romanticChanges.has(id)));
+      if (!pairs.length) continue;
+      participantIds = [...shuffle(pairs, rand)[0]];
+      state.couples = state.couples.filter(pair => !pair.every(id => participantIds.includes(id)));
+      participantIds.forEach(id => romanticChanges.add(id));
+    } else if (template.effect === "couple" || template.effect === "romance") {
+      const partnered = new Set(state.couples.flat());
+      const singles = state.activeIds.filter(id => !partnered.has(id) && !romanticChanges.has(id));
+      if (singles.length < 2) continue;
+      participantIds = shuffle(singles, rand).slice(0, 2);
+      participantIds.forEach(id => romanticChanges.add(id));
+      if (template.effect === "couple") state.couples.push([participantIds[0], participantIds[1]]);
+    } else {
+      if (template.effect === "pact" && events.some(event => event.effect === "pact")) continue;
+      // No nuevo vínculo temporal para quienes acaban de romper.
+      const candidates = template.effect === "connection"
+        ? state.activeIds.filter(id => !romanticChanges.has(id))
+        : state.activeIds;
+      if (candidates.length < template.min) continue;
+      const max = Math.min(template.max, candidates.length);
+      const size = template.min + Math.floor(rand() * (max - template.min + 1));
+      participantIds = shuffle(candidates, rand).slice(0, size);
+      if (template.effect === "connection") participantIds.forEach(id => romanticChanges.add(id));
+    }
     const changes = participantIds.map(id => {
       const before = state.popularity[id];
       const delta = template.impact[0] + Math.floor(rand() * (template.impact[1] - template.impact[0] + 1));
@@ -47,12 +49,44 @@ export function generateHouseRound(state: GameState, rand: () => number): HouseR
       state.popularity[id] = after;
       return { id, before, after, delta: after - before };
     });
-    return { title: template.title, description: template.description, participantIds, changes,
-      positive: template.impact[0] > 0, conflict: !!template.conflict };
-  });
-  return { galaNumber: state.gala, events, popularity: { ...state.popularity }, activeIds: [...state.activeIds] };
+    events.push({ title: template.title, description: template.description, participantIds, changes,
+      positive: template.impact[0] > 0, conflict: !!template.conflict, effect: template.effect });
+  }
+  return { galaNumber: state.gala, events, popularity: { ...state.popularity },
+    activeIds: [...state.activeIds], couples: state.couples.map(pair => [...pair] as [string, string]) };
 }
 
+export function protectedPairs(state: GameState, events: HouseEvent[]): string[][] {
+  return [
+    ...(state.couples ?? []),
+    ...events.filter(event => ["connection", "romance", "pact"].includes(event.effect ?? "")).map(event => event.participantIds),
+  ];
+}
+
+/** Protections outrank disputes; pact members share eligible targets, with shuffled points. */
+export function buildNominations(state: GameState, scheme: number[], immuneId: string | undefined, events: HouseEvent[], rand: () => number) {
+  const groups = protectedPairs(state, events);
+  const eligibleFor = (fromId: string) => state.activeIds.filter(id =>
+    id !== fromId && id !== immuneId && !groups.some(group => group.includes(fromId) && group.includes(id)));
+  const pactTargets = new Map<string, string[]>();
+  for (const event of events.filter(event => event.effect === "pact")) {
+    const members = event.participantIds.filter(id => state.activeIds.includes(id));
+    if (!members.length) continue;
+    const common = state.activeIds.filter(id => members.every(member => eligibleFor(member).includes(id)));
+    // Tiene en cuenta los conflictos de cualquiera de los miembros para elegir los objetivos.
+    const sharedConflicts = events.filter(e => e.conflict && e.participantIds.some(id => members.includes(id)))
+      .map(e => ({ ...e, participantIds: [...new Set([...e.participantIds, members[0]])] }));
+    const targets = nominationTargets(members[0], common, scheme.length, sharedConflicts, rand);
+    for (const member of members) pactTargets.set(member, targets);
+  }
+  return shuffle(state.activeIds, rand).map(fromId => {
+    const agreed = pactTargets.get(fromId);
+    const targets = agreed
+      ? shuffle(agreed, rand)
+      : nominationTargets(fromId, eligibleFor(fromId), scheme.length, events, rand);
+    return { fromId, points: Object.fromEntries(targets.map((id, i) => [id, scheme[i]])) };
+  });
+}
 /** Popularity changes the odds, never guarantees a result. The final is a vote to win. */
 export function audiencePercents(ids: string[], popularity: Record<string, number>, rand: () => number, final = false) {
   const weights = ids.map(id => (0.05 - Math.log(Math.max(1e-12, 1 - rand()))) * Math.exp((final ? 1 : -1) * ((popularity[id] ?? 50) - 50) / 30));

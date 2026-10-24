@@ -9,7 +9,7 @@ function load(name) {
   return cache[name]=mod.exports;
 }
 const {initGame,playNextGala}=load('sim');
-const {audiencePercents,nominationTargets}=load('popularity');
+const {audiencePercents,nominationTargets,buildNominations,protectedPairs}=load('popularity');
 const {mulberry32}=load('rng');
 let rounds=0, positive=0, negative=0, conflict=0, multi=0, finalRounds=0;
 for(let seed=1;seed<=100;seed++) {
@@ -22,7 +22,13 @@ for(let seed=1;seed<=100;seed++) {
     assert.equal(JSON.stringify(playNextGala(previous)),JSON.stringify(state),'seed reproducibility');
     assert.equal(state.houseRounds.length,previous.houseRounds.length+1);
     const round=state.houseRounds.at(-1);rounds++;
-    assert(round.events.length>=1&&round.events.length<=4);
+    assert(round.events.length>=4&&round.events.length<=8);
+    assert.equal(new Set(round.events.map(e=>e.title)).size, round.events.length);
+    assert.equal(new Set(state.couples.flat()).size, state.couples.flat().length, 'one partner per contestant');
+    for(const pair of previous.couples) {
+      if(pair.every(id=>previous.activeIds.includes(id)) && !round.events.some(e=>e.effect==='breakup'&&pair.every(id=>e.participantIds.includes(id))))
+        assert(state.couples.some(p=>pair.every(id=>p.includes(id))),'couples persist until breakup');
+    }
     const expected={...previous.popularity};
     for(const event of round.events) {
       positive+=event.positive;negative+=!event.positive;conflict+=event.conflict;multi+=event.participantIds.length>=4;
@@ -47,7 +53,14 @@ for(let seed=1;seed<=100;seed++) {
     const gala=state.galas.at(-1);
     if(gala&&gala.galaNumber===round.galaNumber) {
       assert.equal(gala.nominations.length,state.activeIds.length);
+      const protections = protectedPairs(state, round.events);
+      for(const pact of round.events.filter(event=>event.effect==='pact')) {
+        const votes=gala.nominations.filter(n=>pact.participantIds.includes(n.fromId));
+        for(const vote of votes) assert.equal(Object.keys(vote.points).sort().join(),Object.keys(votes[0].points).sort().join(),'pact shares targets');
+      }
       for(const nom of gala.nominations) {
+        for(const target of Object.keys(nom.points))
+          assert(!protections.some(group=>group.includes(nom.fromId)&&group.includes(target)),'never nominate protected participant');
         assert(!Object.keys(nom.points).includes(nom.fromId));
         if(gala.events.immunity) assert(!Object.keys(nom.points).includes(gala.events.immunity.winnerId));
       }
@@ -77,3 +90,35 @@ for(let i=0;i<10000;i++) {
 }
 assert(biased>baseline*3);
 console.log(JSON.stringify({seasons:100,rounds,events:{positive,negative,conflict,multi},evictionAverage:{low:lowTotal/10000,high:highTotal/10000},lowLosses,highLosses,highWins,argumentFirstChoice:biased/10000,baselineFirstChoice:baseline/10000}));
+
+// Directed scenarios: pact coordination, temporary protection expiry and persistent couples.
+const fixture=initGame(Array.from({length:10},(_,i)=>'Test '+i),123);
+const ids=fixture.activeIds;
+const [a,b,c,d,e,f]=ids;
+const event=(effect,participantIds)=>({effect,participantIds,conflict:false,changes:[],positive:true,title:effect,description:''});
+const pact=event('pact',[a,b,c]);
+fixture.couples=[[a,d]];
+let votes=buildNominations(fixture,[3,2,1],e,[pact,event('connection',[b,f])],mulberry32(1));
+const coordinated=votes.filter(n=>[a,b,c].includes(n.fromId));
+assert.equal(Object.keys(coordinated[0].points).length,3);
+for(const n of coordinated) {
+  assert.equal(Object.keys(n.points).sort().join(),Object.keys(coordinated[0].points).sort().join());
+  assert(Object.keys(n.points).every(id=>![a,b,c,d,e,f].includes(id)));
+  assert.equal(Object.values(n.points).sort().join(),'1,2,3');
+}
+const smallGame=initGame(Array.from({length:4},(_,i)=>'Short '+i),234);
+const [x,y,z,w]=smallGame.activeIds;
+votes=buildNominations(smallGame,[2,1],undefined,[event('romance',[x,y])],mulberry32(2));
+assert(!votes.find(n=>n.fromId===x).points[y]);
+assert(!votes.find(n=>n.fromId===y).points[x]);
+assert.equal(protectedPairs(smallGame,[]).length,0,'temporary links expire next gala');
+smallGame.couples=[[x,y]];
+assert(protectedPairs(smallGame,[]).some(pair=>pair.includes(x)&&pair.includes(y)));
+smallGame.couples=[];
+assert.equal(protectedPairs(smallGame,[event('breakup',[x,y])]).length,0,'breakup removes couple protection');
+votes=buildNominations(smallGame,[2,1],w,[event('pact',[x,y,z])],mulberry32(3));
+for(const n of votes.filter(n=>[x,y,z].includes(n.fromId))) assert.equal(Object.keys(n.points).length,0,'never force betrayal if no targets');
+const {templates}=load('houseEventCatalog');
+const {moreEvents}=load('moreEvents');
+assert(templates.length+moreEvents.length>=100);
+console.log('PASS: '+(templates.length+moreEvents.length)+' unique event templates; 4–8 events; pacts, couples, breakups, temporary connections, immunity and reduced ballots.');

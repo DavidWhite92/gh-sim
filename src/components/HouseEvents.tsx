@@ -22,10 +22,24 @@ export function HouseEvents({ state, round, onContinue }: { state: GameState; ro
                 </span>
               ))}
             </div>
-            {event.conflict && <p className="muted" style={{ marginBottom: 0 }}>Esta discusión aumenta la probabilidad de que se nominen entre sí en esta gala.</p>}
+            {event.conflict && <p className="muted" style={{ marginBottom: 0 }}>Esta discusión aumenta la probabilidad de que se nominen entre sí, salvo que les proteja una conexión, pareja o pacto.</p>}
+            {event.effect === "pact" && <p className="muted">Pacto de esta gala: protección mutua y los mismos objetivos de nominación, con posible cambio en el reparto de puntos.</p>}
+            {(event.effect === "connection" || event.effect === "romance") && <p className="muted">Protección mutua: no se nominarán durante esta gala.</p>}
+            {event.effect === "couple" && <p className="muted">Pareja: no se nominarán mientras sigan juntos.</p>}
+            {event.effect === "breakup" && <p className="muted">La protección de pareja termina: pueden volver a nominarse.</p>}
           </article>
         ))}
       </div>
+      {round.couples?.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <strong>Parejas en la casa</strong>
+          <div className="row" style={{ marginTop: 8 }}>
+            {round.couples.map(pair => <span className="badge" key={pair.join("-")}>
+              ♡ {pair.map(id => names.get(id)).join(" y ")}
+            </span>)}
+          </div>
+        </div>
+      )}
       {onContinue && <button className="btn btnPrimary" style={{ marginTop: 14 }} onClick={onContinue}>Continuar gala</button>}
     </section>
   );

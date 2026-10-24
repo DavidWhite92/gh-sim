@@ -67,7 +67,10 @@ export type GalaRecord = {
   events: GalaEvents;
 };
 
+export type HouseEventEffect = "pact" | "connection" | "romance" | "couple" | "breakup";
+
 export type HouseEvent = {
+  effect?: HouseEventEffect;
   title: string;
   description: string;
   participantIds: string[];
@@ -77,6 +80,7 @@ export type HouseEvent = {
 };
 
 export type HouseRound = {
+  couples: [string, string][];
   galaNumber: number;
   events: HouseEvent[];
   popularity: Record<string, number>;
@@ -86,6 +90,7 @@ export type HouseRound = {
 export type GameState = {
   popularity: Record<string, number>;
   houseRounds: HouseRound[];
+  couples: [string, string][];
   seed: number;
   gala: number;
 

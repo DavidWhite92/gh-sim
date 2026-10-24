@@ -1,6 +1,6 @@
-import { generateHouseRound, audiencePercents, nominationTargets } from "./popularity";
+import { generateHouseRound, audiencePercents, buildNominations } from "./popularity";
 import { GameState, Status, GalaRecord, ContestantInput, ContestantSetup, Gender } from "./types";
-import { mulberry32, pickOne, shuffle } from "./rng";
+import { mulberry32, pickOne } from "./rng";
 
 function slugify(s: string) {
   return s
@@ -59,13 +59,6 @@ function computeNomineesByPoints(totals: Record<string, number>, minCount: numbe
   return picked;
 }
 
-function autoNominate(fromId: string, eligibleTargets: string[], pointsScheme: number[], rand: () => number, events: import("./types").HouseEvent[]) {
-  const targets = nominationTargets(fromId, eligibleTargets, pointsScheme.length, events, rand);
-  const points: Record<string, number> = {};
-  for (let i = 0; i < targets.length; i++) points[targets[i]] = pointsScheme[i];
-  return { fromId, points };
-}
-
 export function initGame(inputs: ContestantInput[], seed = Date.now()): GameState {
   const normalized = normalizeInputs(inputs);
 
@@ -93,6 +86,7 @@ export function initGame(inputs: ContestantInput[], seed = Date.now()): GameStat
     timeline,
     popularity: Object.fromEntries(activeIds.map(id => [id, 50])),
     houseRounds: [],
+    couples: [],
     pendingNominees: [],
     galas: [],
     publicVotes: [],
@@ -209,19 +203,13 @@ export function playNextGala(prev: GameState): GameState {
       setStatusForGala(state, immuneId, galaIndex0, "Exento");
     }
 
-    const nominations: GalaRecord["nominations"] = [];
+    const nominations = buildNominations(state, scheme, immuneId, houseRound.events, rand);
     const totals: Record<string, number> = {};
     for (const targetId of state.activeIds) totals[targetId] = 0;
-
-    // Sortea el turno de cada concursante de nuevo en cada gala.
-    for (const fromId of shuffle(state.activeIds, rand)) {
-      const eligibleTargets = state.activeIds.filter(id => id !== fromId && id !== immuneId);
-      const nom = autoNominate(fromId, eligibleTargets, scheme, rand, houseRound.events);
-      nominations.push(nom);
+    for (const nom of nominations) {
       for (const [toId, pts] of Object.entries(nom.points)) totals[toId] += pts;
     }
-
-    const provisional = computeNomineesByPoints(totals, min);
+    const provisional = computeNomineesByPoints(Object.fromEntries(Object.entries(totals).filter(([id]) => id !== immuneId)), min);
 
     // Líder: salva a uno de los provisionales
     const LEADER_P = 0.22;
@@ -302,7 +290,7 @@ export function playNextGala(prev: GameState): GameState {
       finalNominees = provisional.filter(id => id !== savedId);
 
       // rellenar hasta mínimo con siguiente por puntos (+empates)
-      const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+      const sorted = Object.entries(totals).filter(([id]) => id !== immuneId).sort((a, b) => b[1] - a[1]);
       const already = new Set(finalNominees);
       already.add(savedId);
 

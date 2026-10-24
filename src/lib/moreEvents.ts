@@ -1,0 +1,113 @@
+import type { EventTemplate } from "./houseEventCatalog";
+
+type Story = [string, string];
+function group(stories: Story[], min: number, max: number, impact: [number, number], extra: Partial<EventTemplate> = {}): EventTemplate[] {
+  return stories.map(([title, description]) => ({ title, description, min, max, impact, ...extra }));
+}
+
+export const moreEvents: EventTemplate[] = [
+  ...group([
+    ["Desayuno para todos", "Madruga y prepara el desayuno de toda la casa. La audiencia agradece el gesto."],
+    ["Una disculpa sincera", "Reconoce un error sin excusas y pide perdón delante del grupo."],
+    ["El huerto revive", "Recupera las plantas del jardín y comparte la cosecha con la casa."],
+    ["Paciencia en la prueba", "Mantiene la calma cuando todo se complica y ayuda al equipo a concentrarse."],
+    ["Un detalle de cumpleaños", "Organiza una pequeña celebración con lo poco que hay en la despensa."],
+    ["Confesiones con humor", "Se ríe de sus propias meteduras de pata y conquista al público."],
+    ["El turno más duro", "Se ofrece para cubrir la guardia nocturna de una prueba agotadora."],
+    ["Una receta de casa", "Enseña una receta familiar y convierte la cena en un momento especial."],
+    ["Escuchar sin juzgar", "Escucha las preocupaciones del grupo con respeto y sin buscar protagonismo."],
+    ["Creatividad con poco", "Transforma materiales reciclados en una decoración que alegra la casa."],
+    ["Lección improvisada", "Comparte una habilidad con el grupo y anima a quienes tienen más dificultades."],
+    ["Una promesa cumplida", "Cumple una tarea que había prometido, aunque nadie estuviera pendiente."],
+    ["Valentía ante el miedo", "Supera un miedo durante la prueba semanal. Su esfuerzo emociona a la audiencia."],
+    ["Humildad tras ganar", "Resta importancia a su victoria en un juego y reconoce el mérito de los demás."],
+  ], 1, 1, [2, 8]),
+  ...group([
+    ["Comida escondida", "Se descubre que reservaba comida a escondidas mientras el resto compartía las raciones."],
+    ["Un comentario arrogante", "Se burla de las habilidades del resto durante una prueba y pierde apoyos."],
+    ["La culpa siempre es ajena", "Responsabiliza a todo el grupo de un error propio y evita disculparse."],
+    ["Promesas vacías", "Promete ayudar varias veces, pero abandona las tareas en cuanto se apagan los ánimos."],
+    ["Interrupciones constantes", "No deja terminar a nadie durante la reunión de convivencia."],
+    ["Una rabieta por perder", "Reacciona con mal humor a una derrota sin importancia y estropea el juego."],
+    ["Privilegios en la compra", "Intenta imponer sus caprichos en la lista de la compra común."],
+    ["Bromas a destiempo", "Se toma a broma un momento serio de la casa y recibe críticas del público."],
+    ["Siesta durante la prueba", "Se duerme durante su turno y el equipo pierde una parte de la recompensa."],
+    ["Una versión interesada", "Cuenta una conversación omitiendo detalles para quedar mejor ante el grupo."],
+    ["Falta de deportividad", "Intenta cambiar las reglas de un juego cuando descubre que va perdiendo."],
+    ["Protagonismo excesivo", "Acapara una celebración colectiva y apenas reconoce a quienes la organizaron."],
+    ["El secreto indiscreto", "Repite una confidencia que le habían pedido mantener en privado."],
+    ["Desprecio al esfuerzo", "Critica una comida preparada por el grupo sin ofrecer ninguna ayuda."],
+  ], 1, 1, [-9, -2]),
+  ...group([
+    ["Radio de madrugada", "Improvisan un programa de radio lleno de anécdotas que divierte a la audiencia."],
+    ["Concurso de imitaciones", "Se imitan con cariño y consiguen una noche de risas sin ofender a nadie."],
+    ["Cocina de aprovechamiento", "Convierten las sobras en una cena que sorprende a todo el grupo."],
+    ["Rescate de la colada", "Arreglan un desastre con la ropa sin culparse y con mucho sentido del humor."],
+    ["Teatro en el salón", "Preparan una obra disparatada que levanta el ánimo de la casa."],
+    ["Clase de baile", "Inventan una coreografía y animan a participar incluso a quienes tienen vergüenza."],
+    ["La canción de la casa", "Componen una canción sobre la convivencia que termina cantando todo el grupo."],
+    ["Deporte en equipo", "Organizan una sesión de ejercicio adaptada a todos y sin competitividad."],
+    ["El mural de recuerdos", "Dibujan los mejores momentos de la temporada y emocionan a la audiencia."],
+    ["Mediación tranquila", "Ayudan a rebajar una tensión del grupo escuchando todas las versiones."],
+  ], 2, 3, [3, 8]),
+  ...group([
+    ["Ruido de madrugada", "Montan una fiesta improvisada cuando el resto intenta descansar y se niegan a bajar el volumen."],
+    ["Reparto injusto", "Se reservan las mejores raciones y dejan lo que sobra al resto de la casa."],
+    ["Burlas en el dormitorio", "Se ríen de las costumbres de otros compañeros a sus espaldas."],
+    ["La prueba abandonada", "Dejan una tarea colectiva a medias por puro aburrimiento."],
+    ["Excusas compartidas", "Se cubren mutuamente para evitar responsabilidades en la limpieza."],
+    ["Una celebración excluyente", "Organizan un plan y dejan deliberadamente fuera a parte del grupo."],
+    ["Competición sin límites", "Se obsesionan con ganar un juego y arruinan el ambiente con trampas."],
+    ["Rumor exagerado", "Transforman un comentario sin importancia en una historia que inquieta a toda la casa."],
+  ], 2, 3, [-9, -3]),
+  ...group([
+    ["Disputa por el dormitorio", "Se enfrentan por el reparto de camas y terminan intercambiando reproches."],
+    ["La compra divide", "Chocan por el presupuesto semanal y la discusión pasa de los productos a las acusaciones personales."],
+    ["Rivalidad en la prueba", "Se culpan de un fallo y se dicen cosas que dejan una fuerte tensión entre ellos."],
+    ["Confidencia traicionada", "Una confidencia repetida desencadena una discusión directa entre sus protagonistas."],
+    ["Gritos en el jardín", "Una conversación sobre convivencia acaba en gritos y ataques personales."],
+    ["La broma reprochada", "Se enfrentan porque una broma ha molestado y ninguna parte quiere ceder."],
+    ["Acusaciones de estrategia", "Se acusan mutuamente de fingir ante las cámaras y terminan enfrentados."],
+    ["El turno de ducha", "Una disputa cotidiana escala hasta una discusión que sorprende al resto."],
+  ], 2, 3, [-10, -4], { conflict: true }),
+  ...group([
+    ["Remontada histórica", "Coordinan una remontada espectacular en la prueba semanal cuando parecía imposible ganar."],
+    ["Festival solidario", "Organizan una gala casera para animar a toda la casa tras una semana difícil."],
+    ["Noche de agradecimientos", "Comparten públicamente lo que han aprendido unos de otros y emocionan al público."],
+    ["La gran sorpresa", "Preparan una sorpresa colectiva llena de detalles que refuerza la convivencia."],
+  ], 4, 6, [7, 13]),
+  ...group([
+    ["Motín por las tareas", "Se niegan a colaborar en bloque y el funcionamiento de la casa queda patas arriba."],
+    ["Sabotaje al juego", "Rompen las reglas de una actividad colectiva para obtener ventaja y quedan en evidencia."],
+    ["La bronca del salón", "Una reunión de convivencia se convierte en una discusión colectiva llena de reproches."],
+    ["Bando contra bando", "Se enfrentan abiertamente y arrastran a la casa a un clima de tensión."],
+  ], 4, 6, [-13, -7], { conflict: true }),
+  ...group([
+    ["Conexión inesperada", "Descubren que comparten experiencias muy parecidas y acuerdan cuidarse durante esta gala."],
+    ["Confidentes del jardín", "Una charla tranquila crea confianza entre ambos y deciden no nominarse esta vez."],
+    ["Complicidad en la cocina", "Trabajando juntos encuentran una conexión especial y se prometen apoyo esta gala."],
+    ["Un abrazo necesario", "Se apoyan en un momento vulnerable y refuerzan su confianza mutua."],
+  ], 2, 2, [3, 7], { effect: "connection" }),
+  ...group([
+    ["Miradas que hablan", "Se hacen evidente su interés romántico y prefieren protegerse durante esta gala."],
+    ["Una cita improvisada", "Comparten una cena a solas y surge una atracción que cambia su relación."],
+    ["Coqueteo en la fiesta", "Pasan la noche buscándose y descubren que la atracción es mutua."],
+    ["Una confesión romántica", "Reconocen que sienten interés el uno por el otro, aunque todavía no forman una pareja."],
+  ], 2, 2, [3, 8], { effect: "romance" }),
+  ...group([
+    ["Se enamoran", "Confirman que se han enamorado y deciden vivir la experiencia como pareja."],
+    ["Un beso que lo confirma", "Dan el paso de convertir su complicidad en una relación estable."],
+    ["Promesa bajo las estrellas", "Hablan de sus sentimientos y comienzan una relación dentro de la casa."],
+  ], 2, 2, [5, 11], { effect: "couple" }),
+  ...group([
+    ["Ruptura en la casa", "Deciden terminar su relación. Desde este momento vuelven a poder nominarse."],
+    ["Caminos separados", "Reconocen que la relación no funciona y acuerdan dejar de ser pareja."],
+    ["El final de la historia", "Una conversación difícil pone fin a su relación y al compromiso de protegerse."],
+  ], 2, 2, [-8, -3], { effect: "breakup" }),
+  ...group([
+    ["Pacto de tres", "Acuerdan no nominarse y coordinar los nombres de sus votos en esta gala."],
+    ["Alianza en el dormitorio", "Sellan un pacto de nominaciones: se protegerán y apuntarán a los mismos compañeros."],
+    ["Estrategia en el jardín", "Preparan juntos una lista de objetivos y se comprometen a mantenerla en la nominación."],
+    ["Acuerdo a media voz", "Forman una alianza de tres para concentrar sus nominaciones en los mismos nombres."],
+  ], 3, 3, [-8, -3], { effect: "pact" }),
+];
