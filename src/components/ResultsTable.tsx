@@ -121,17 +121,20 @@ export function ResultsTable({ state }: { state: GameState }) {
   // Orden de filas:
   // activos arriba; expulsados abajo (primer eliminado, el último)
   const eliminatedRev = [...state.eliminatedIds].reverse();
+  const alphabeticalActiveIds = [...state.activeIds].sort((a, b) =>
+    (idToName.get(a) ?? a).localeCompare(idToName.get(b) ?? b, "es", { sensitivity: "base" })
+  );
 
   let orderedIds: string[] = [];
   if ((state as any).finished && (state as any).finalRanking) {
     const fr = (state as any).finalRanking;
     orderedIds = [fr.winnerId, fr.secondId, fr.thirdId];
     const rest = state.contestants.map(c => c.id).filter(id => !orderedIds.includes(id));
-    const restActive = rest.filter(id => state.activeIds.includes(id));
+    const restActive = alphabeticalActiveIds.filter(id => rest.includes(id));
     const restElim = eliminatedRev.filter(id => rest.includes(id));
     orderedIds = [...orderedIds, ...restActive, ...restElim];
   } else {
-    orderedIds = [...state.activeIds, ...eliminatedRev];
+    orderedIds = [...alphabeticalActiveIds, ...eliminatedRev];
   }
 
   // votos de expulsión (no final)

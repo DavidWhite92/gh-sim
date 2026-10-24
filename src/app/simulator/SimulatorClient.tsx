@@ -93,6 +93,9 @@ export default function SimulatorClient() {
     );
   }
 
+  const alphabeticalContestants = [...state.contestants].sort((a, b) =>
+    a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+  );
   const idToName = new Map(state.contestants.map(c => [c.id, c.name]));
 
   // Galas “revisables”: solo las que ya han llegado a mostrar tabla (evita spoilers)
@@ -252,7 +255,7 @@ export default function SimulatorClient() {
             paddingBottom: 4,
           }}
         >
-          {state.contestants.map(c => {
+          {alphabeticalContestants.map(c => {
             const isGrey = displayEliminated.has(c.id);
             const src = getPhotoUrl(c.id);
             const timeline = state.timeline[c.id] ?? [];
