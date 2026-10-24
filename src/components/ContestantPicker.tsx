@@ -469,7 +469,7 @@ export function ContestantPicker({
     }
   }, [customList, customHydrated]);
 
-  const canStart = selected.length >= 10 && selected.length <= 20;
+  const canStart = selected.length >= 10 && selected.length <= 25;
 
   const selectedKeySet = useMemo(() => {
     return new Set(selected.map((c) => `${c.seasonId ?? ""}::${c.name}`));
@@ -631,7 +631,7 @@ export function ContestantPicker({
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
           <span style={{ opacity: 0.8 }}>
-            Seleccionados: <b>{selected.length}</b> (mín 10 / máx 20)
+            Seleccionados: <b>{selected.length}</b> (mín 10 / máx 25)
           </span>
 
           <button
