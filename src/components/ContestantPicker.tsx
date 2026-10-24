@@ -425,6 +425,7 @@ export function ContestantPicker({
   onStart: (contestants: ContestantSetup[], seed: number) => void;
 }) {
   const router = useRouter();
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ContestantSetup[]>([]);
   const [seed, setSeed] = useState<number>(() => Date.now());
 
@@ -614,6 +615,17 @@ export function ContestantPicker({
     router.push(`/simulator?code=${encodeURIComponent(pasted.trim())}`);
   }
 
+  const normalizeSearch = (value: string) =>
+    value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+  const query = normalizeSearch(search);
+  const matchesName = (name: string) => normalizeSearch(name).includes(query);
+  const matchingCustoms = customList.filter(c => matchesName(c.name));
+  const matchingSeasons = seasonsWithCustom
+    .map(s => ({ ...s, contestants: s.contestants.filter(c => matchesName(c.name)) }))
+    .filter(s => !query || (s.id === CUSTOM_SEASON_ID ? matchingCustoms.length > 0 : s.contestants.length > 0));
+  const matchCount = matchingSeasons.reduce(
+    (count, s) => count + (s.id === CUSTOM_SEASON_ID ? matchingCustoms.length : s.contestants.length), 0
+  );
   return (
     <div className="contestantPicker" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14, maxWidth: 980 }}>
       <h1 style={{ fontSize: 28, fontWeight: 900 }}>Simulador Gran Hermano</h1>
@@ -682,6 +694,25 @@ export function ContestantPicker({
         </div>
       </div>
 
+      <div>
+        <label htmlFor="contestant-search" style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
+          Buscar concursantes en todas las ediciones
+        </label>
+        <input
+          id="contestant-search"
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Escribe un nombre…"
+          className="contestantSearch"
+        />
+        {query && (
+          <p role="status" style={{ fontSize: 13 }}>
+            {matchCount === 0 ? "No hay concursantes con ese nombre." : `${matchCount} concursantes encontrados`}
+          </p>
+        )}
+      </div>
+
       <section style={{ border: "1px solid #eee", borderRadius: 16, padding: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
           <strong style={{ fontSize: 16 }}>Roster</strong>
@@ -691,7 +722,7 @@ export function ContestantPicker({
         {selected.length === 0 ? (
           <div style={{ opacity: 0.75 }}>Aún no has seleccionado concursantes.</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(170px, 100%), 1fr))", gap: 10 }}>
+          <div className="contestantGrid">
             {selected.map((c, idx) => (
               <button
                 key={`${c.seasonId}::${c.name}::${idx}`}
@@ -753,25 +784,25 @@ export function ContestantPicker({
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          {seasonsWithCustom.map((s, idx) => {
+          {matchingSeasons.map((s, idx) => {
             const seasonSelectedCount = countSelectedForSeason(s.id);
-            const total = s.id === CUSTOM_SEASON_ID ? customList.length : s.contestants.length;
+            const total = s.id === CUSTOM_SEASON_ID ? matchingCustoms.length : s.contestants.length;
 
             return (
               <details
-                key={s.id}
-                open={idx === 0 || s.id === CUSTOM_SEASON_ID}
+                key={s.id + (query ? "-search" : "-browse")}
+                open={!!query || idx === 0 || s.id === CUSTOM_SEASON_ID}
                 style={{ border: "1px solid #eee", borderRadius: 16, padding: 10, background: "#fff" }}
               >
                 <summary style={{ cursor: "pointer", fontWeight: 900 }}>
                   {s.label} <span style={{ opacity: 0.7, fontWeight: 700 }}>({total} · seleccionados: {seasonSelectedCount})</span>
                 </summary>
 
-                <div
+                <div className="contestantGrid"
                   style={{
                     marginTop: 10,
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(min(170px, 100%), 1fr))",
+
                     gap: 10,
                   }}
                 >
@@ -839,7 +870,7 @@ export function ContestantPicker({
                     })}
 
                   {s.id === CUSTOM_SEASON_ID &&
-                    customList.map((c) => {
+                    matchingCustoms.map((c) => {
                       const setup: ContestantSetup = {
                         name: c.name,
                         seasonId: CUSTOM_SEASON_ID,

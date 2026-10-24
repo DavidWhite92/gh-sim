@@ -222,3 +222,33 @@ hr.soft{
   min-width: 0;
   max-width: 100%;
 }
+.contestantGrid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+}
+.contestantSearch{
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 16px;
+}
+@media (max-width: 600px){
+  .contestantGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .contestantGrid > button{
+    flex-direction: column;
+    justify-content: flex-start;
+    text-align: center !important;
+    padding: 8px 5px !important;
+    gap: 6px !important;
+    font-size: 13px;
+  }
+  .contestantGrid > button > div:last-child{
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
