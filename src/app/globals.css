@@ -39,9 +39,12 @@ html, body{
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .container{
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   width: min(1200px, calc(100% - 32px));
   margin: 18px auto 40px;
   display: grid;
@@ -85,6 +88,7 @@ html, body{
 }
 
 .card{
+  min-width: 0;
   background: linear-gradient(180deg, var(--card), var(--card2));
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -135,20 +139,23 @@ hr.soft{
 
 /* tabla compacta */
 .tableWrap{
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   border-radius: var(--radius);
 }
 .table{
   width: 100%;
   border-collapse: collapse;
-  min-width: 900px;
+  table-layout: fixed;
   font-size: 12px;
 }
 .table th, .table td{
   border-bottom: 1px solid rgba(255,255,255,.08);
-  padding: 8px 10px;
+  padding: 6px 3px;
   vertical-align: top;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .table th{
   color: rgba(255,255,255,.80);
@@ -186,4 +193,12 @@ hr.soft{
   text-align: center;
   justify-items: center;
   align-items: center;
+}
+
+/* El simulador aprovecha el ancho disponible; otras páginas conservan su medida. */
+.container:has(.simulatorRoster){
+  width: min(1920px, calc(100% - 32px));
+}
+.table th:first-child{
+  width: 110px;
 }

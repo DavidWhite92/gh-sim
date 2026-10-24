@@ -383,8 +383,8 @@ const onLoadCode = () => {
   return (
     <>
 
-      {/* ROSTER arriba (horizontal 62x62). Gris solo cuando corresponde */}
-      <section className="card cardPad" style={{ paddingTop: 10, paddingBottom: 10 }}>
+      {/* ROSTER adaptable (fotos de 62x62). Gris solo cuando corresponde */}
+      <section className="card cardPad simulatorRoster" style={{ paddingTop: 10, paddingBottom: 10 }}>
         <div className="row" style={{ alignItems: "baseline" }}>
           <div style={{ fontWeight: 900 }}>Roster</div>
           <div className="muted" style={{ marginLeft: 10 }}>Fotos arriba (gris si expulsado)</div>
@@ -393,7 +393,7 @@ const onLoadCode = () => {
           style={{
             display: "flex",
             gap: 10,
-            overflowX: "auto",
+            flexWrap: "wrap",
             paddingTop: 10,
             paddingBottom: 4,
           }}

@@ -134,7 +134,7 @@ export function ResultsTable({ state }: { state: GameState }) {
       </div>
 
       <div className="tableWrap">
-        <table className="table">
+        <table className="table" style={{ minWidth: 110 + headers.length * 58 }}>
           <thead>
             <tr>
               <th style={{ textAlign: "center", border: cellBorder }}>Concursante</th>
