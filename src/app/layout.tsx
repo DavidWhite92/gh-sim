@@ -1,3 +1,4 @@
+import Link from "next/link";
 import "./globals.css";
 import ThemeGate from "./ThemeGate";
 
@@ -60,13 +61,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="bg" />
           <div className="appShell">
             <header className="topbar">
-              <div className="brand">
+              <Link href="/" className="brand" style={{ color: "inherit", textDecoration: "none" }} aria-label="GH Simulator · Inicio">
                 <div className="logoDot" />
                 <div>
-                  <div className="brandTitle">Gran Hermano</div>
+                  <div className="brandTitle">GH Simulator</div>
                   <div className="brandSub">Simulador</div>
                 </div>
-              </div>
+              </Link>
             </header>
 
             <main className="container">{children}</main>

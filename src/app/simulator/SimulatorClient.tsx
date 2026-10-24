@@ -145,6 +145,12 @@ export default function SimulatorClient() {
     (lastVote.kind ?? "eviction") === "final" &&
     finalDoneForGala !== lastVote.galaNumber;
 
+  const winnerAnnounced = lastVote?.kind === "final" && (
+    (finalPhase === "winner" && finalStep >= 5) ||
+    finalPhase === "done" ||
+    finalDoneForGala === lastVote.galaNumber
+  );
+
   const isFinalReady = (state as any).finalReady && !((state as any).finished);
 
   // Eliminados para la UI: durante el reveal NO ponemos gris al expulsado hasta que salga su nombre en pantalla
@@ -158,13 +164,20 @@ export default function SimulatorClient() {
       set.delete(vote.expelledId);
     }
 
-    // final: tercer finalista
-    if (isFinalVoteToReveal && finalPhase === "third" && finalStep < 5 && vote.kind === "final") {
-      set.delete(vote.expelledId);
+    // La final conserva a los tres en color hasta anunciar al ganador.
+    if (vote.kind === "final" && state.finalRanking) {
+      const { winnerId, secondId, thirdId } = state.finalRanking;
+      set.delete(winnerId);
+      if (winnerAnnounced) {
+        set.add(secondId);
+        set.add(thirdId);
+      } else {
+        set.delete(secondId);
+        set.delete(thirdId);
+      }
     }
-
     return set;
-  }, [state.eliminatedIds, state.publicVotes, isEvictionToReveal, evictStep, isFinalVoteToReveal, finalPhase, finalStep]);
+  }, [state.eliminatedIds, state.publicVotes, state.finalRanking, isEvictionToReveal, evictStep, winnerAnnounced]);
   const isFinalFinished = !!((state as any).finished);
 
   // En la gala tras última expulsión, no hay nominaciones: solo finalistas
@@ -246,8 +259,10 @@ export default function SimulatorClient() {
             // Conserva los nominados de la votación pendiente hasta revelar al expulsado.
             const pendingEvictionNominee =
               isEvictionToReveal && evictStep < 5 && lastVote.nominees.includes(c.id);
+            const pendingFinalist =
+              isFinalVoteToReveal && !winnerAnnounced && lastVote.nominees.includes(c.id);
             const status = !isGrey
-              ? (showTable ? timeline[timeline.length - 1] : pendingEvictionNominee ? "Nominado" : undefined)
+              ? (pendingFinalist ? "Finalista" : showTable ? timeline[timeline.length - 1] : pendingEvictionNominee ? "Nominado" : undefined)
               : undefined;
             const frameColor = status === "Nominado" || status === "Nominada"
               ? STATUS_COLORS.Nominado
