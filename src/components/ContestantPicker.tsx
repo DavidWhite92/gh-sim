@@ -615,11 +615,11 @@ export function ContestantPicker({
   }
 
   return (
-    <div style={{ display: "grid", gap: 14, maxWidth: 980 }}>
+    <div className="contestantPicker" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14, maxWidth: 980 }}>
       <h1 style={{ fontSize: 28, fontWeight: 900 }}>Simulador Gran Hermano</h1>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <label style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", maxWidth: "100%" }}>
           <strong>Semilla</strong>
           <input
             type="number"
@@ -629,7 +629,7 @@ export function ContestantPicker({
           />
         </label>
 
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ opacity: 0.8 }}>
             Seleccionados: <b>{selected.length}</b> (mín 10 / máx 25)
           </span>
@@ -683,7 +683,7 @@ export function ContestantPicker({
       </div>
 
       <section style={{ border: "1px solid #eee", borderRadius: 16, padding: 14 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
           <strong style={{ fontSize: 16 }}>Roster</strong>
           <span style={{ opacity: 0.7, fontSize: 13 }}>(clic en una tarjeta para quitar)</span>
         </div>
@@ -691,7 +691,7 @@ export function ContestantPicker({
         {selected.length === 0 ? (
           <div style={{ opacity: 0.75 }}>Aún no has seleccionado concursantes.</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(170px, 100%), 1fr))", gap: 10 }}>
             {selected.map((c, idx) => (
               <button
                 key={`${c.seasonId}::${c.name}::${idx}`}
@@ -747,7 +747,7 @@ export function ContestantPicker({
       </section>
 
       <section style={{ border: "1px solid #eee", borderRadius: 16, padding: 14 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
           <strong style={{ fontSize: 16 }}>Concursantes</strong>
           <span style={{ opacity: 0.7, fontSize: 13 }}>(abre/cierra y clic para añadir/quitar)</span>
         </div>
@@ -771,7 +771,7 @@ export function ContestantPicker({
                   style={{
                     marginTop: 10,
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(min(170px, 100%), 1fr))",
                     gap: 10,
                   }}
                 >
@@ -988,7 +988,7 @@ export function ContestantPicker({
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between",
+                        justifyContent: "space-between", flexWrap: "wrap",
                         gap: 10,
                         padding: 10,
                         border: "1px solid #eee",

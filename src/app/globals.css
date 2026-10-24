@@ -147,15 +147,15 @@ hr.soft{
 .table{
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
   font-size: 12px;
 }
 .table th, .table td{
   border-bottom: 1px solid rgba(255,255,255,.08);
   padding: 6px 3px;
   vertical-align: top;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 .table th{
   color: rgba(255,255,255,.80);
@@ -201,4 +201,24 @@ hr.soft{
 }
 .table th:first-child{
   width: 110px;
+}
+/* Permite que las cuadrículas y controles de inicio se ajusten al móvil. */
+.homePage{
+  padding: clamp(0px, 2vw, 20px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+.contestantPicker{
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.contestantPicker :where(div, section, details, button, label){
+  min-width: 0;
+}
+.contestantPicker :where(input, select){
+  min-width: 0;
+  max-width: 100%;
 }

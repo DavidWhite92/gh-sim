@@ -8,13 +8,13 @@ export default function HomePage() {
   const router = useRouter();
 
   return (
-    <main style={{ padding: 20, display: "grid", gap: 16 }}>
+    <div className="homePage">
       <ContestantPicker
         onStart={(contestants: ContestantInput[], seed: number) => {
           const payload = encodeURIComponent(JSON.stringify({ contestants, seed }));
           router.push(`/simulator?setup=${payload}`);
         }}
       />
-    </main>
+    </div>
   );
 }
