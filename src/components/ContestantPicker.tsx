@@ -453,8 +453,9 @@ export function ContestantPicker({
       setCustomList(cleaned);
     } catch {
       // ignore
+    } finally {
+      setCustomHydrated(true);
     }
-    setCustomHydrated(true);
   }, []);
 
   useEffect(() => {

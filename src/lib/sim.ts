@@ -223,7 +223,8 @@ export function playNextGala(prev: GameState): GameState {
     const totals: Record<string, number> = {};
     for (const targetId of state.activeIds) totals[targetId] = 0;
 
-    for (const fromId of state.activeIds) {
+    // Sortea el turno de cada concursante de nuevo en cada gala.
+    for (const fromId of shuffle(state.activeIds, rand)) {
       const eligibleTargets = state.activeIds.filter(id => id !== fromId && id !== immuneId);
       const nom = autoNominate(fromId, eligibleTargets, scheme, rand);
       nominations.push(nom);
