@@ -634,9 +634,9 @@ export function ContestantPicker({
             style={{
               padding: "12px 16px",
               borderRadius: 12,
-              border: "1px solid #ddd",
+              border: "1px solid var(--picker-border)",
               cursor: selected.length >= 25 ? "not-allowed" : "pointer",
-              background: "#111",
+              background: "var(--picker-primary)",
               color: "#fff",
               fontWeight: 900,
             }}
@@ -650,9 +650,9 @@ export function ContestantPicker({
             style={{
               padding: "12px 16px",
               borderRadius: 12,
-              border: "1px solid #ddd",
+              border: "1px solid var(--picker-border)",
               cursor: canStart ? "pointer" : "not-allowed",
-              background: canStart ? "#111" : "#999",
+              background: canStart ? "var(--picker-primary)" : "var(--picker-disabled)",
               color: "#fff",
               fontWeight: 800,
             }}
@@ -681,7 +681,7 @@ export function ContestantPicker({
         )}
       </div>
 
-      <section style={{ border: "1px solid #eee", borderRadius: 16, padding: 14 }}>
+      <section style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
           <strong style={{ fontSize: 16 }}>Roster</strong>
           <span style={{ opacity: 0.7, fontSize: 13 }}>(clic en una tarjeta para quitar)</span>
@@ -702,8 +702,8 @@ export function ContestantPicker({
                   textAlign: "left",
                   padding: 10,
                   borderRadius: 14,
-                  border: "1px solid #e6e6e6",
-                  background: "#fff",
+                  border: "1px solid var(--picker-border)",
+                  background: "var(--picker-card)",
                   cursor: "pointer",
                 }}
                 title="Quitar"
@@ -714,8 +714,8 @@ export function ContestantPicker({
                     height: 44,
                     borderRadius: 12,
                     overflow: "hidden",
-                    background: "#f3f3f3",
-                    border: "1px solid #eee",
+                    background: "var(--picker-image)",
+                    border: "1px solid var(--picker-border)",
                     flex: "0 0 auto",
                   }}
                 >
@@ -745,7 +745,7 @@ export function ContestantPicker({
         )}
       </section>
 
-      <section style={{ border: "1px solid #eee", borderRadius: 16, padding: 14 }}>
+      <section style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
           <strong style={{ fontSize: 16 }}>Concursantes</strong>
           <span style={{ opacity: 0.7, fontSize: 13 }}>(abre/cierra y clic para añadir/quitar)</span>
@@ -760,7 +760,7 @@ export function ContestantPicker({
               <details
                 key={s.id + (query ? "-search" : "-browse")}
                 open={!!query || idx === 0 || s.id === CUSTOM_SEASON_ID}
-                style={{ border: "1px solid #eee", borderRadius: 16, padding: 10, background: "#fff" }}
+                style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 10, background: "var(--picker-card)" }}
               >
                 <summary style={{ cursor: "pointer", fontWeight: 900 }}>
                   {s.label} <span style={{ opacity: 0.7, fontWeight: 700 }}>({total} · seleccionados: {seasonSelectedCount})</span>
@@ -784,6 +784,7 @@ export function ContestantPicker({
                         <button
                           key={key}
                           onClick={() => togglePick(setup)}
+                          aria-pressed={picked}
                           disabled={!picked && selected.length >= 25}
                           style={{
                             display: "flex",
@@ -792,9 +793,9 @@ export function ContestantPicker({
                             textAlign: "left",
                             padding: 10,
                             borderRadius: 14,
-                            border: "1px solid #e6e6e6",
-                            background: picked ? "#111" : "#fff",
-                            color: picked ? "#fff" : "#111",
+                            border: "1px solid var(--picker-border)",
+                            background: picked ? "var(--picker-selected)" : "var(--picker-card)",
+                            color: "var(--picker-text)",
                             cursor: !picked && selected.length >= 25 ? "not-allowed" : "pointer",
                             opacity: !picked && selected.length >= 25 ? 0.6 : 1,
                           }}
@@ -806,8 +807,8 @@ export function ContestantPicker({
                               height: 44,
                               borderRadius: 12,
                               overflow: "hidden",
-                              background: picked ? "rgba(255,255,255,0.14)" : "#f3f3f3",
-                              border: "1px solid rgba(0,0,0,0.08)",
+                              background: "var(--picker-image)",
+                              border: "1px solid var(--picker-border)",
                               flex: "0 0 auto",
                             }}
                           >
@@ -852,6 +853,7 @@ export function ContestantPicker({
                         <button
                           key={key}
                           onClick={() => togglePick(setup)}
+                          aria-pressed={picked}
                           disabled={!picked && selected.length >= 25}
                           style={{
                             display: "flex",
@@ -860,9 +862,9 @@ export function ContestantPicker({
                             textAlign: "left",
                             padding: 10,
                             borderRadius: 14,
-                            border: "1px solid #e6e6e6",
-                            background: picked ? "#111" : "#fff",
-                            color: picked ? "#fff" : "#111",
+                            border: "1px solid var(--picker-border)",
+                            background: picked ? "var(--picker-selected)" : "var(--picker-card)",
+                            color: "var(--picker-text)",
                             cursor: !picked && selected.length >= 25 ? "not-allowed" : "pointer",
                             opacity: !picked && selected.length >= 25 ? 0.6 : 1,
                           }}
@@ -874,8 +876,8 @@ export function ContestantPicker({
                               height: 44,
                               borderRadius: 12,
                               overflow: "hidden",
-                              background: picked ? "rgba(255,255,255,0.14)" : "#f3f3f3",
-                              border: "1px solid rgba(0,0,0,0.08)",
+                              background: "var(--picker-image)",
+                              border: "1px solid var(--picker-border)",
                               flex: "0 0 auto",
                             }}
                           >
@@ -906,7 +908,7 @@ export function ContestantPicker({
         </div>
       </section>
 
-      <section style={{ border: "1px solid #eee", borderRadius: 16, padding: 14 }}>
+      <section style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
         <details open>
           <summary style={{ cursor: "pointer", fontWeight: 900 }}>
             {editingCustomName ? `Editando: ${editingCustomName}` : "Crear concursante custom"} (se guarda en tu navegador)
@@ -918,18 +920,18 @@ export function ContestantPicker({
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
                 placeholder="Nombre del concursante"
-                style={{ padding: 10, borderRadius: 12, border: "1px solid #ddd", width: 260 }}
+                style={{ padding: 10, borderRadius: 12, border: "1px solid var(--picker-border)", width: 260 }}
               />
               <input
                 value={customPhotoUrl}
                 onChange={(e) => setCustomPhotoUrl(e.target.value)}
                 placeholder="Link de foto (png/gif/jpg)"
-                style={{ padding: 10, borderRadius: 12, border: "1px solid #ddd", width: 420 }}
+                style={{ padding: 10, borderRadius: 12, border: "1px solid var(--picker-border)", width: 420 }}
               />
               <select
                 value={customGender}
                 onChange={(e) => setCustomGender(e.target.value as Gender)}
-                style={{ padding: 10, borderRadius: 12, border: "1px solid #ddd" }}
+                style={{ padding: 10, borderRadius: 12, border: "1px solid var(--picker-border)" }}
                 aria-label="Género"
               >
                 <option value="X">Sin especificar</option>
@@ -945,9 +947,9 @@ export function ContestantPicker({
                 style={{
                   padding: "10px 14px",
                   borderRadius: 12,
-                  border: "1px solid #ddd",
+                  border: "1px solid var(--picker-border)",
                   cursor: !customName.trim() || !customPhotoUrl.trim() ? "not-allowed" : "pointer",
-                  background: "#f7f7f7",
+                  background: "var(--picker-card)",
                   fontWeight: 800,
                 }}
               >
@@ -960,9 +962,9 @@ export function ContestantPicker({
                   style={{
                     padding: "10px 14px",
                     borderRadius: 12,
-                    border: "1px solid #ddd",
+                    border: "1px solid var(--picker-border)",
                     cursor: "pointer",
-                    background: "#fff",
+                    background: "var(--picker-card)",
                     fontWeight: 800,
                   }}
                 >
@@ -975,7 +977,7 @@ export function ContestantPicker({
               Los customs se guardan en <code>localStorage</code> del navegador actual.
             </div>
 
-            <div style={{ marginTop: 6, borderTop: "1px solid #eee", paddingTop: 10 }}>
+            <div style={{ marginTop: 6, borderTop: "1px solid var(--picker-border)", paddingTop: 10 }}>
               <div style={{ fontWeight: 900, marginBottom: 8 }}>Mis customs</div>
               {customList.length === 0 ? (
                 <div style={{ opacity: 0.75 }}>Aún no tienes concursantes custom.</div>
@@ -990,9 +992,9 @@ export function ContestantPicker({
                         justifyContent: "space-between", flexWrap: "wrap",
                         gap: 10,
                         padding: 10,
-                        border: "1px solid #eee",
+                        border: "1px solid var(--picker-border)",
                         borderRadius: 14,
-                        background: "#fff",
+                        background: "var(--picker-card)",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -1002,8 +1004,8 @@ export function ContestantPicker({
                             height: 44,
                             borderRadius: 12,
                             overflow: "hidden",
-                            background: "#f3f3f3",
-                            border: "1px solid #eee",
+                            background: "var(--picker-image)",
+                            border: "1px solid var(--picker-border)",
                             flex: "0 0 auto",
                           }}
                         >
@@ -1024,8 +1026,8 @@ export function ContestantPicker({
                           style={{
                             padding: "8px 10px",
                             borderRadius: 12,
-                            border: "1px solid #ddd",
-                            background: "#fff",
+                            border: "1px solid var(--picker-border)",
+                            background: "var(--picker-card)",
                             cursor: "pointer",
                             fontWeight: 900,
                           }}
@@ -1039,8 +1041,8 @@ export function ContestantPicker({
                           style={{
                             padding: "8px 10px",
                             borderRadius: 12,
-                            border: "1px solid #ddd",
-                            background: "#fff",
+                            border: "1px solid var(--picker-border)",
+                            background: "var(--picker-card)",
                             cursor: "pointer",
                             fontWeight: 900,
                           }}

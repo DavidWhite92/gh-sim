@@ -252,3 +252,68 @@ hr.soft{
     overflow-wrap: anywhere;
   }
 }
+/* Superficies de inicio con contraste suave y coherente en ambos temas. */
+.contestantPicker{
+  --picker-surface: #151e2d;
+  --picker-card: #202d40;
+  --picker-image: #29384c;
+  --picker-selected: #294c64;
+  --picker-primary: #285977;
+  --picker-disabled: #334155;
+  --picker-border: #3c4d64;
+  --picker-text: #e3e9f2;
+  --picker-placeholder: #a8b6c9;
+  --picker-focus: #8bc9ed;
+  color: var(--picker-text);
+  color-scheme: dark;
+}
+html[data-theme="light"] .contestantPicker{
+  --picker-surface: #fff;
+  --picker-card: #fff;
+  --picker-image: #f3f3f3;
+  --picker-selected: #e0effa;
+  --picker-primary: #111;
+  --picker-disabled: #777;
+  --picker-border: #ddd;
+  --picker-text: #111;
+  --picker-placeholder: #626b76;
+  --picker-focus: #21618c;
+  color-scheme: light;
+}
+.contestantPicker > section{
+  background: var(--picker-surface);
+}
+.contestantPicker :where(button, input, select, summary){
+  color: var(--picker-text);
+}
+.contestantPicker :where(input, select){
+  background: var(--picker-card);
+  border-color: var(--picker-border);
+}
+.contestantPicker input::placeholder{
+  color: var(--picker-placeholder);
+  opacity: 1;
+}
+.contestantPicker button[aria-pressed="true"]{
+  outline: 2px solid var(--picker-focus);
+  outline-offset: -2px;
+}
+.contestantPicker :where(button, input, select, summary):focus-visible{
+  outline: 2px solid var(--picker-focus);
+  outline-offset: 3px;
+}
+@media (hover: hover){
+  .contestantPicker button:not(:disabled):hover{
+    box-shadow: inset 0 0 0 1px var(--picker-focus);
+  }
+}
+html:not([data-theme="light"]) body{
+  background: linear-gradient(180deg, #101827, #0c1320);
+}
+html:not([data-theme="light"]) .bg{
+  opacity: .25;
+}
+/* Los estados conservan sus colores; el texto oscuro contrasta sobre ellos. */
+.table :is(.cellText, .cellFinal){
+  color: #101827;
+}
