@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { downloadTableJpg } from "@/lib/downloadTableJpg";
 import { GameState, STATUS_COLORS, Status, Gender } from "@/lib/types";
 
 function cellBg(status?: Status) {
@@ -50,6 +52,21 @@ function cellLabel(status: Status | undefined, gender: Gender) {
 }
 
 export function ResultsTable({ state }: { state: GameState }) {
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+  const onDownload = async () => {
+    if (!tableRef.current || downloading) return;
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      await downloadTableJpg(tableRef.current, `resultado-galas-${state.seed}.jpg`);
+    } catch {
+      setDownloadError("No se pudo descargar la tabla. Inténtalo de nuevo.");
+    } finally {
+      setDownloading(false);
+    }
+  };
   const maxCols = Math.max(...Object.values(state.timeline).map(a => a.length), 1);
 
   const cellBorder = (typeof document !== "undefined" && document.documentElement.dataset.theme === "light")
@@ -129,12 +146,16 @@ export function ResultsTable({ state }: { state: GameState }) {
       <div className="cardPad">
         <div className="row">
           <div style={{ fontWeight: 900 }}>Recorrido por galas</div>
+          <button className="btn" onClick={onDownload} disabled={downloading}>
+            {downloading ? "Generando JPG…" : "Descargar Tabla"}
+          </button>
+          {downloadError && <span role="alert">{downloadError}</span>}
           <span className="badge muted">Tabla compacta · estados sin negrita</span>
         </div>
       </div>
 
       <div className="tableWrap">
-        <table className="table">
+        <table ref={tableRef} className="table">
           <thead>
             <tr>
               <th style={{ textAlign: "center", border: cellBorder }}>Concursante</th>
