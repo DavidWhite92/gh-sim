@@ -7,78 +7,6 @@ import type { GameState } from "@/lib/types";
 import { ResultsTable } from "@/components/ResultsTable";
 import { GalaSummary } from "@/components/GalaSummary";
 
-// --- Guardar / Cargar edición (código portable + guardado local) ---
-// Nota: el código puede ser largo si el estado/timeline es grande.
-// Para "guardar de verdad" sin copiar nada, se usa localStorage.
-const CODE_PREFIX_V1 = "GHSIM1.";
-const PENDING_CODE_KEY = "ghsim_pending_load_code_v1";
-const LOCAL_SAVE_KEY = "ghsim_saved_state_code_v1";
-
-function bytesToBase64Url(bytes: Uint8Array) {
-  let bin = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function base64UrlToBytes(b64urlRaw: string) {
-  const b64url = (b64urlRaw || "").replace(/\s+/g, "");
-  const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64url.length / 4) * 4, "=");
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
-
-function persistCodeToLocalStorage(code: string) {
-  try {
-    window.localStorage.setItem(LOCAL_SAVE_KEY, code);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function readCodeFromLocalStorage(): string {
-  try {
-    return window.localStorage.getItem(LOCAL_SAVE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function encodeStateToCode(state: GameState) {
-  const payload = { v: 1, state };
-  const json = JSON.stringify(payload);
-  const bytes = new TextEncoder().encode(json);
-  return CODE_PREFIX_V1 + bytesToBase64Url(bytes);
-}
-
-function decodeStateFromCode(codeRaw: string): GameState | null {
-  const input = (codeRaw || "").trim();
-  if (!input) return null;
-
-  const body = (input.startsWith(CODE_PREFIX_V1) ? input.slice(CODE_PREFIX_V1.length) : input).replace(/\s+/g, "");
-
-  try {
-    const bytes = base64UrlToBytes(body);
-    const json = new TextDecoder().decode(bytes);
-    const parsed = JSON.parse(json) as any;
-    const state = (parsed?.state ?? parsed) as GameState;
-
-    // Validación mínima
-    if (!state || typeof (state as any).seed !== "number") return null;
-    if (!Array.isArray((state as any).contestants)) return null;
-    if (!(state as any).timeline) return null;
-
-    return state;
-  } catch {
-    return null;
-  }
-}
-
 const REVEAL_LINES = [
   "LA AUDIENCIA...",
   "HA DECIDIDO...",
@@ -133,41 +61,6 @@ export default function SimulatorClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup]);
 
-  // Cargar edición desde código (URL o sessionStorage)
-  const codeParam = params.get("code");
-  const loadFlag = params.get("load");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const pending = loadFlag === "1" ? window.sessionStorage.getItem(PENDING_CODE_KEY) : null;
-    const raw = (codeParam && codeParam.trim()) || (pending && pending.trim()) || "";
-    if (!raw) return;
-
-    
-    const loaded = decodeStateFromCode(raw);
-    if (!loaded) {
-      alert("El código no es válido o está corrupto.");
-      return;
-    }
-
-    setState(loaded);
-    resetUiForLoadedState();
-
-    if (pending) window.sessionStorage.removeItem(PENDING_CODE_KEY);
-
-    // limpia el flag de la URL para que no se recargue en bucle
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("load");
-      url.searchParams.delete("code");
-      window.history.replaceState({}, "", url.toString());
-    } catch {
-      // noop
-    }
-    
-  }, [codeParam, loadFlag]);
-
   // Expulsión reveal
   const [evictStep, setEvictStep] = useState(0); // 0..5 text, 5 name, 6 done
   const [evictDoneForGala, setEvictDoneForGala] = useState<number | null>(null);
@@ -187,67 +80,6 @@ export default function SimulatorClient() {
 
   // Revisión de galas (evita spoilers: solo permite galas ya “cerradas”)
   const [reviewGalaNumber, setReviewGalaNumber] = useState<number | null>(null);
-
-  const resetUiForLoadedState = () => {
-    setEvictStep(0);
-    setEvictDoneForGala(null);
-    setFinalPhase("third");
-    setFinalStep(0);
-    setFinalDoneForGala(null);
-    setRevealNomCount(0);
-    setShowDefinitives(false);
-    setShowLeaderSave(false);
-    setShowTable(false);
-    setReviewGalaNumber(null);
-  };
-const onSaveCode = async () => {
-  if (!state) return;
-
-  const code = encodeStateToCode(state);
-
-  const ok = persistCodeToLocalStorage(code);
-  if (!ok) {
-    alert("No se pudo guardar en este navegador (probablemente por límite de almacenamiento).\n\nPuedes seguir usando el código manual (copiar/pegar).");
-  }
-
-  try {
-    await navigator.clipboard.writeText(code);
-  } catch {
-    // ignore
-  }
-
-  window.prompt("Copia este código para guardar la edición:", code);
-};
-const onLoadCode = () => {
-  const saved = readCodeFromLocalStorage();
-  const input = window.prompt(
-    saved
-      ? "Pega el código a cargar (o deja vacío para cargar tu último guardado):"
-      : "Pega el código de la edición a cargar:",
-    saved || ""
-  );
-
-  const raw = ((input ?? "").trim() || (saved ?? "").trim());
-  if (!raw) {
-    alert("No hay ninguna edición guardada en este navegador, ni se ha pegado un código.");
-    return;
-  }
-
-  const loaded = decodeStateFromCode(raw);
-  if (!loaded) {
-    alert(
-      "El código no es válido o está corrupto.\n\nConsejos:\n- Asegúrate de copiarlo entero (sin '...').\n- Si lo pegas desde un sitio que lo recorta, usa el portapapeles o un .txt."
-    );
-    return;
-  }
-
-  setState(loaded);
-  resetUiForLoadedState();
-
-  // Guardar como último guardado (también si venía de un código pegado)
-  persistCodeToLocalStorage(encodeStateToCode(loaded));
-};
-
 
   if (!state) {
     return (
@@ -496,8 +328,6 @@ const onLoadCode = () => {
           </button>
 
           <button className="btn" onClick={() => router.push("/")}>Reiniciar</button>
-          <button className="btn" onClick={onSaveCode}>Guardar</button>
-          <button className="btn" onClick={onLoadCode}>Cargar</button>
         </div>
 
         {state.gala === 1 && (

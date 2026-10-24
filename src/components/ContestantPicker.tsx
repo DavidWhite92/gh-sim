@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { ContestantSetup, Gender } from "@/lib/types";
 
 type SeasonDef = {
@@ -424,10 +423,8 @@ export function ContestantPicker({
 }: {
   onStart: (contestants: ContestantSetup[], seed: number) => void;
 }) {
-  const router = useRouter();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ContestantSetup[]>([]);
-  const [seed, setSeed] = useState<number>(() => Date.now());
 
   // Persisted custom contestants
   const [customList, setCustomList] = useState<CustomStored[]>([]);
@@ -609,12 +606,6 @@ export function ContestantPicker({
     setSelected((prev) => [...prev, chosen]);
   }
 
-  function onLoadEditionCode() {
-    const pasted = window.prompt("Pega aquí el código de edición para cargarla:", "");
-    if (!pasted) return;
-    router.push(`/simulator?code=${encodeURIComponent(pasted.trim())}`);
-  }
-
   const normalizeSearch = (value: string) =>
     value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
   const query = normalizeSearch(search);
@@ -631,17 +622,7 @@ export function ContestantPicker({
       <h1 style={{ fontSize: 28, fontWeight: 900 }}>Simulador Gran Hermano</h1>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <label style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", maxWidth: "100%" }}>
-          <strong>Semilla</strong>
-          <input
-            type="number"
-            value={seed}
-            onChange={(e) => setSeed(Number(e.target.value))}
-            style={{ padding: 10, borderRadius: 12, border: "1px solid #ddd", width: 240 }}
-          />
-        </label>
-
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ opacity: 0.8 }}>
             Seleccionados: <b>{selected.length}</b> (mín 10 / máx 25)
           </span>
@@ -663,22 +644,8 @@ export function ContestantPicker({
           </button>
 
           <button
-            onClick={onLoadEditionCode}
-            style={{
-              padding: "12px 16px",
-              borderRadius: 12,
-              border: "1px solid #ddd",
-              cursor: "pointer",
-              background: "#fff",
-              fontWeight: 800,
-            }}
-          >
-            Cargar
-          </button>
-
-          <button
             disabled={!canStart}
-            onClick={() => onStart(selected, seed)}
+            onClick={() => onStart(selected, Date.now())}
             style={{
               padding: "12px 16px",
               borderRadius: 12,
@@ -983,7 +950,7 @@ export function ContestantPicker({
                   fontWeight: 800,
                 }}
               >
-                Guardar
+                {editingCustomName ? "Actualizar concursante" : "Crear concursante"}
               </button>
 
               {editingCustomName && (
