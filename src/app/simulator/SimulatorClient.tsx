@@ -243,7 +243,12 @@ export default function SimulatorClient() {
             const isGrey = displayEliminated.has(c.id);
             const src = getPhotoUrl(c.id);
             const timeline = state.timeline[c.id] ?? [];
-            const status = showTable && !isGrey ? timeline[timeline.length - 1] : undefined;
+            // Conserva los nominados de la votación pendiente hasta revelar al expulsado.
+            const pendingEvictionNominee =
+              isEvictionToReveal && evictStep < 5 && lastVote.nominees.includes(c.id);
+            const status = !isGrey
+              ? (showTable ? timeline[timeline.length - 1] : pendingEvictionNominee ? "Nominado" : undefined)
+              : undefined;
             const frameColor = status === "Nominado" || status === "Nominada"
               ? STATUS_COLORS.Nominado
               : status === "Finalista" ? STATUS_COLORS.Finalista : undefined;
