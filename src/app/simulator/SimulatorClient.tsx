@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { initGame, playNextGala } from "@/lib/sim";
-import type { GameState } from "@/lib/types";
+import { STATUS_COLORS, type GameState } from "@/lib/types";
 import { ResultsTable } from "@/components/ResultsTable";
 import { GalaSummary } from "@/components/GalaSummary";
 
@@ -195,12 +195,21 @@ export default function SimulatorClient() {
   const canShowLeaderSave = hasLeaderThisGala && canShowProvisional; // se muestra tras provisionales (no decimos arriba)
   const canShowDefinitives = revealNomCount >= totalNoms && (!hasLeaderThisGala || showLeaderSave);
 
+  const revealNominations = (count: number) => {
+    if (!hasNomsThisGala || isEvictionToReveal || isFinalVoteToReveal) return;
+    const nextCount = Math.min(totalNoms, count);
+    setRevealNomCount(nextCount);
+    if (nextCount >= totalNoms && !hasLeaderThisGala) {
+      setShowDefinitives(true);
+      setShowTable(true);
+    }
+  };
   // Botón celebrar solo cuando ya se han revelado definitivos (o cuando toca final)
   const canCelebrate =
-    !isFinalFinished &&
+    !isFinalFinished && !isEvictionToReveal && !isFinalVoteToReveal &&
     (
       (isFinalReady && !isEvictionToReveal && !isFinalVoteToReveal) ||
-      (hasNomsThisGala && canShowDefinitives) ||
+      (hasNomsThisGala && canShowDefinitives && showTable) ||
       (!hasNomsThisGala && !isEvictionToReveal && !isFinalReady)
     );
 
@@ -233,10 +242,16 @@ export default function SimulatorClient() {
           {state.contestants.map(c => {
             const isGrey = displayEliminated.has(c.id);
             const src = getPhotoUrl(c.id);
+            const timeline = state.timeline[c.id] ?? [];
+            const status = showTable && !isGrey ? timeline[timeline.length - 1] : undefined;
+            const frameColor = status === "Nominado" || status === "Nominada"
+              ? STATUS_COLORS.Nominado
+              : status === "Finalista" ? STATUS_COLORS.Finalista : undefined;
             return (
               <div key={c.id} style={{ width: 62, flex: "0 0 auto" }}>
                 <div
                   style={{
+                    position: "relative",
                     width: 62,
                     height: 62,
                     borderRadius: 14,
@@ -246,7 +261,7 @@ export default function SimulatorClient() {
                     filter: isGrey ? "grayscale(1)" : "none",
                     opacity: isGrey ? 0.7 : 1,
                   }}
-                  title={c.name}
+                  title={frameColor ? `${c.name} · ${status}` : c.name}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -263,6 +278,18 @@ export default function SimulatorClient() {
                       if (src?.toLowerCase().endsWith(".jpg")) img.src = src.replace(/\.jpg$/i, ".png");
                     }}
                   />
+                  {frameColor && (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        borderRadius: "inherit",
+                        boxShadow: `inset 0 0 0 4px ${frameColor}`,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             );
@@ -323,10 +350,11 @@ export default function SimulatorClient() {
 
           <div className="spacer" />
 
-          <button className="btn btnPrimary" disabled={!canCelebrate} onClick={onCelebrate}>
-            {isFinalFinished ? "Concurso finalizado" : (isFinalReady ? "Celebrar final" : "Celebrar gala")}
-          </button>
-
+          {canCelebrate && (
+            <button className="btn btnPrimary" onClick={onCelebrate}>
+              {isFinalReady ? "Celebrar final" : "Celebrar gala"}
+            </button>
+          )}
           <button className="btn" onClick={() => router.push("/")}>Reiniciar</button>
         </div>
 
@@ -481,18 +509,8 @@ export default function SimulatorClient() {
           state={state}
           gala={lastGala!}
           revealCount={revealNomCount}
-          onNextReveal={() => {
-            const nextCount = Math.min(totalNoms, revealNomCount + 1);
-            setRevealNomCount(nextCount);
-
-            // cuando termina la última nominación: si hay líder, mostrar provisionales y luego salvación y luego definitivos
-            if (nextCount >= totalNoms) {
-              if (!hasLeaderThisGala) {
-                setShowDefinitives(true);
-                setShowTable(true);
-              }
-            }
-          }}
+          onNextReveal={() => revealNominations(revealNomCount + 1)}
+          onRevealAll={() => revealNominations(totalNoms)}
           showProvisional={canShowProvisional}
           showLeaderSave={showLeaderSave}
           showDefinitives={showDefinitives}

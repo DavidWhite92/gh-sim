@@ -7,6 +7,7 @@ export function GalaSummary({
   gala,
   revealCount,
   onNextReveal,
+  onRevealAll,
   showDefinitives,
   showTable,
   showProvisional,
@@ -17,6 +18,7 @@ export function GalaSummary({
   gala: GalaRecord;
   revealCount: number;
   onNextReveal: () => void;
+  onRevealAll?: () => void;
   showDefinitives: boolean;
   showTable: boolean;
   showProvisional: boolean;
@@ -62,10 +64,17 @@ export function GalaSummary({
         <div style={{ fontWeight: 900 }}>Gala {gala.galaNumber} · Nominaciones</div>
         <span className="badge muted">Los provisionales solo aparecen si hay líder</span>
         <div className="spacer" />
-        {!readOnly && (
-          <button className="btn" onClick={onNextReveal} disabled={revealCount >= gala.nominations.length}>
-            Siguiente
-          </button>
+        {!readOnly && revealCount < gala.nominations.length && (
+          <>
+            <button className="btn" onClick={onNextReveal}>
+              Siguiente
+            </button>
+            {onRevealAll && (
+              <button className="btn" onClick={onRevealAll}>
+                Revelar todo
+              </button>
+            )}
+          </>
         )}
       </div>
 
