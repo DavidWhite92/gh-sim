@@ -279,7 +279,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Rebeca", file: "Rebecagh11.gif", gender: "F" },
       { name: "Nagore", file: "Nagore.gif", gender: "F" },
       { name: "Lis", file: "Lis.gif", gender: "F" },
-      { name: "Ángela", file: "angelagh11.gif", gender: "F" },
+      { name: "Ángela", file: "Angelagh11.gif", gender: "F" },
       { name: "Gonzalo", file: "Gonzalogh11.gif", gender: "M" },
     ],
   },
