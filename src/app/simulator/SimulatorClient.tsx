@@ -4,6 +4,8 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { initGame, playNextGala } from "@/lib/sim";
 import { STATUS_COLORS, type GameState } from "@/lib/types";
+import { HouseEvents } from "@/components/HouseEvents";
+import { PopularityTable } from "@/components/PopularityTable";
 import { ResultsTable } from "@/components/ResultsTable";
 import { GalaSummary } from "@/components/GalaSummary";
 
@@ -74,6 +76,9 @@ export default function SimulatorClient() {
   const [revealNomCount, setRevealNomCount] = useState(0);
   const [showDefinitives, setShowDefinitives] = useState(false);
   const [showLeaderSave, setShowLeaderSave] = useState(false);
+
+  const [eventsSeen, setEventsSeen] = useState(true);
+  const [showPopularity, setShowPopularity] = useState(false);
 
   // Table gating
   const [showTable, setShowTable] = useState(false);
@@ -187,6 +192,8 @@ export default function SimulatorClient() {
   const finalists = (state as any).finalists as string[] | undefined;
 
   const onCelebrate = () => {
+    setEventsSeen(false);
+    setShowPopularity(false);
     // reset pasos UI
     setEvictStep(0);
     setRevealNomCount(0);
@@ -212,7 +219,7 @@ export default function SimulatorClient() {
   const canShowDefinitives = revealNomCount >= totalNoms && (!hasLeaderThisGala || showLeaderSave);
 
   const revealNominations = (count: number) => {
-    if (!hasNomsThisGala || isEvictionToReveal || isFinalVoteToReveal) return;
+    if (!eventsSeen || !hasNomsThisGala || isEvictionToReveal || isFinalVoteToReveal) return;
     const nextCount = Math.min(totalNoms, count);
     setRevealNomCount(nextCount);
     if (nextCount >= totalNoms && !hasLeaderThisGala) {
@@ -222,7 +229,7 @@ export default function SimulatorClient() {
   };
   // Botón celebrar solo cuando ya se han revelado definitivos (o cuando toca final)
   const canCelebrate =
-    !isFinalFinished && !isEvictionToReveal && !isFinalVoteToReveal &&
+    eventsSeen && !isFinalFinished && !isEvictionToReveal && !isFinalVoteToReveal &&
     (
       (isFinalReady && !isEvictionToReveal && !isFinalVoteToReveal) ||
       (hasNomsThisGala && canShowDefinitives && showTable) ||
@@ -231,9 +238,9 @@ export default function SimulatorClient() {
 
   // state.gala representa la *siguiente* gala a celebrar (puntero interno).
   // Para el usuario mostramos la última gala "en curso" (state.gala - 1).
-  const topTitle = isFinalFinished
+  const topTitle = isFinalFinished && winnerAnnounced
     ? "Concurso finalizado"
-    : (isFinalReady
+    : (isFinalReady || isFinalVoteToReveal
       ? "Final"
       : (state.gala === 1 ? "Gala 1: Entrada a la casa" : `Gala actual: ${Math.max(1, state.gala - 1)}`));
 
@@ -413,8 +420,16 @@ export default function SimulatorClient() {
         )}
       </section>
 
+      {state.houseRounds.length > 0 && (
+        <HouseEvents
+          state={state}
+          round={state.houseRounds[state.houseRounds.length - 1]}
+          onContinue={eventsSeen ? undefined : () => setEventsSeen(true)}
+        />
+      )}
+
       {/* REVEAL EXPULSIÓN */}
-      {isEvictionToReveal && (
+      {eventsSeen && isEvictionToReveal && (
         <section className="card cardPad" style={{ textAlign: "center" }}>
           <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1 }}>
             {evictStep < 5
@@ -464,7 +479,7 @@ export default function SimulatorClient() {
 
 
       {/* REVEAL FINAL (3º y ganador) */}
-      {isFinalVoteToReveal && (
+      {eventsSeen && isFinalVoteToReveal && (
         <section className="card cardPad" style={{ textAlign: "center" }}>
           {(() => {
             const thirdId = lastVote.expelledId as string;
@@ -527,7 +542,7 @@ export default function SimulatorClient() {
       )}
 
       {/* NOMINACIONES: solo si hay gala record y ya no estamos bloqueados por expulsión */}
-      {hasNomsThisGala && !isEvictionToReveal && !isFinalVoteToReveal && (
+      {eventsSeen && hasNomsThisGala && !isEvictionToReveal && !isFinalVoteToReveal && (
         <GalaSummary
           state={state}
           gala={lastGala!}
@@ -542,7 +557,7 @@ export default function SimulatorClient() {
       )}
 
       {/* Botón para confirmar salvación del líder y mostrar definitivos */}
-      {hasNomsThisGala && hasLeaderThisGala && !isEvictionToReveal && revealNomCount >= totalNoms && !showLeaderSave && (
+      {eventsSeen && hasNomsThisGala && hasLeaderThisGala && !isEvictionToReveal && revealNomCount >= totalNoms && !showLeaderSave && (
         <section className="card cardPad">
           <div className="row">
             <div style={{ fontWeight: 900 }}>Acción del líder</div>
@@ -565,7 +580,20 @@ export default function SimulatorClient() {
       )}
 
       {/* TABLA: solo cuando ya se revelaron los definitivos */}
-      {showTable && <ResultsTable state={state} />}
+      {showTable && (
+        <>
+          {isFinalFinished && finalDoneForGala === lastVote?.galaNumber && (
+            <div className="row">
+              <button className="btn" onClick={() => setShowPopularity(value => !value)}>
+                {showPopularity ? "Tabla de Recorrido" : "Tabla de Popularidad"}
+              </button>
+            </div>
+          )}
+          {showPopularity && isFinalFinished
+            ? <PopularityTable state={state} />
+            : <ResultsTable state={state} />}
+        </>
+      )}
     </>
   );
 }

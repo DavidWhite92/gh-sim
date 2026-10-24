@@ -317,3 +317,17 @@ html:not([data-theme="light"]) .bg{
 .table :is(.cellText, .cellFinal){
   color: #101827;
 }
+.houseEvent{
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 12px;
+}
+html[data-theme="light"] .houseEvent{
+  border-top-color: #ddd;
+  border-right-color: #ddd;
+  border-bottom-color: #ddd;
+}
+.popularityTable td, .popularityTable th{
+  padding: 8px;
+}

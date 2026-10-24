@@ -67,7 +67,25 @@ export type GalaRecord = {
   events: GalaEvents;
 };
 
+export type HouseEvent = {
+  title: string;
+  description: string;
+  participantIds: string[];
+  changes: { id: string; before: number; after: number; delta: number }[];
+  positive: boolean;
+  conflict: boolean;
+};
+
+export type HouseRound = {
+  galaNumber: number;
+  events: HouseEvent[];
+  popularity: Record<string, number>;
+  activeIds: string[];
+};
+
 export type GameState = {
+  popularity: Record<string, number>;
+  houseRounds: HouseRound[];
   seed: number;
   gala: number;
 

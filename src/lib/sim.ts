@@ -1,3 +1,4 @@
+import { generateHouseRound, audiencePercents, nominationTargets } from "./popularity";
 import { GameState, Status, GalaRecord, ContestantInput, ContestantSetup, Gender } from "./types";
 import { mulberry32, pickOne, shuffle } from "./rng";
 
@@ -34,22 +35,6 @@ function setStatusForGala(state: GameState, contestantId: string, galaIndex0: nu
   state.timeline[contestantId][galaIndex0] = status;
 }
 
-function sumTo100Percents(ids: string[], rand: () => number): Record<string, number> {
-  const weights = ids.map(() => 0.2 + rand() * 1.8);
-  const sum = weights.reduce((a, b) => a + b, 0);
-  const raw = weights.map(w => (w / sum) * 100);
-
-  const out: Record<string, number> = {};
-  let acc = 0;
-  for (let i = 0; i < ids.length; i++) {
-    const v = i === ids.length - 1 ? (100 - acc) : Math.round(raw[i] * 10) / 10;
-    out[ids[i]] = v;
-    acc += v;
-  }
-  out[ids[ids.length - 1]] = Math.round(out[ids[ids.length - 1]] * 10) / 10;
-  return out;
-}
-
 function getMinNominees(activeCount: number) {
   if (activeCount === 4) return { points: [2, 1], min: 2 };
   return { points: [3, 2, 1], min: 3 };
@@ -74,8 +59,8 @@ function computeNomineesByPoints(totals: Record<string, number>, minCount: numbe
   return picked;
 }
 
-function autoNominate(fromId: string, eligibleTargets: string[], pointsScheme: number[], rand: () => number) {
-  const targets = shuffle(eligibleTargets, rand).slice(0, pointsScheme.length);
+function autoNominate(fromId: string, eligibleTargets: string[], pointsScheme: number[], rand: () => number, events: import("./types").HouseEvent[]) {
+  const targets = nominationTargets(fromId, eligibleTargets, pointsScheme.length, events, rand);
   const points: Record<string, number> = {};
   for (let i = 0; i < targets.length; i++) points[targets[i]] = pointsScheme[i];
   return { fromId, points };
@@ -106,6 +91,8 @@ export function initGame(inputs: ContestantInput[], seed = Date.now()): GameStat
     activeIds,
     eliminatedIds: [],
     timeline,
+    popularity: Object.fromEntries(activeIds.map(id => [id, 50])),
+    houseRounds: [],
     pendingNominees: [],
     galas: [],
     publicVotes: [],
@@ -140,10 +127,13 @@ export function playNextGala(prev: GameState): GameState {
   const galaIndex0 = state.gala - 1;
   ensureTimelineColumns(state, state.gala);
 
+  const houseRound = generateHouseRound(state, rand);
+  state.houseRounds.push(houseRound);
+
   // FINAL (si ya estaba lista)
   if ((state as any).finalReady && state.activeIds.length === 3) {
     // Votación final (una sola, la UI revela 3º y ganador)
-    const finalPercents = sumTo100Percents(state.activeIds, rand);
+    const finalPercents = audiencePercents(state.activeIds, state.popularity, rand, true);
     const ranked = Object.entries(finalPercents).sort((a, b) => b[1] - a[1]);
 
     const winnerId = ranked[0][0];
@@ -174,7 +164,7 @@ export function playNextGala(prev: GameState): GameState {
 
   // 1) Expulsión (si hay nominados pendientes)
   if (state.pendingNominees.length > 0) {
-    const percents = sumTo100Percents(state.pendingNominees, rand);
+    const percents = audiencePercents(state.pendingNominees, state.popularity, rand);
     const expelledId = Object.entries(percents).sort((a, b) => b[1] - a[1])[0][0];
 
     state.publicVotes.push({
@@ -226,7 +216,7 @@ export function playNextGala(prev: GameState): GameState {
     // Sortea el turno de cada concursante de nuevo en cada gala.
     for (const fromId of shuffle(state.activeIds, rand)) {
       const eligibleTargets = state.activeIds.filter(id => id !== fromId && id !== immuneId);
-      const nom = autoNominate(fromId, eligibleTargets, scheme, rand);
+      const nom = autoNominate(fromId, eligibleTargets, scheme, rand, houseRound.events);
       nominations.push(nom);
       for (const [toId, pts] of Object.entries(nom.points)) totals[toId] += pts;
     }
