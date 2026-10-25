@@ -7,6 +7,6 @@ export function WithdrawalNotice({ state, record }: { state: GameState; record: 
     <p>{record.phase === "after"
       ? `Tras la expulsión de ${names.get(record.followedId ?? "")}, decide marcharse también.`
       : "Después de lo vivido en la casa, decide abandonar antes de la expulsión y las nominaciones."}</p>
-    <p>Entra como reserva <b>{names.get(record.replacementId)}</b>, con 50 puntos de popularidad.</p>
+    <p>Entra como reserva <b>{names.get(record.replacementId)}</b>. En esta gala no puede nominar ni ser nominado.</p>
   </div>;
 }

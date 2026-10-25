@@ -6,7 +6,7 @@ export function withdrawalChance(previousCount: number) {
 }
 
 export function applyWithdrawal(state: GameState, phase: WithdrawalRecord["phase"], rand: () => number, followedId?: string) {
-  if (!state.withdrawalsEnabled || !state.reserves.length || state.withdrawals.length >= 3) return;
+  if (state.activeIds.length <= 5 || !state.withdrawalsEnabled || !state.reserves.length || state.withdrawals.length >= 3) return;
   let candidates = [...state.activeIds];
   if (phase === "after" && followedId) {
     const closeIds = new Set([

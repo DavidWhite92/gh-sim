@@ -176,7 +176,7 @@ export function playNextGala(prev: GameState): GameState {
   // Una tirada por gala, sin afectar al azar del resto cuando están desactivados.
   const withdrawalRand = mulberry32(state.seed + state.gala * 87071 + 39013);
   let withdrawalPhase: "before" | "after" | undefined;
-  if (state.withdrawalsEnabled && state.reserves.length && withdrawalRand() < withdrawalChance(state.withdrawals.length)) {
+  if (state.activeIds.length > 5 && state.withdrawalsEnabled && state.reserves.length && withdrawalRand() < withdrawalChance(state.withdrawals.length)) {
     withdrawalPhase = state.pendingNominees.length > 0 && withdrawalRand() < 0.5 ? "after" : "before";
   }
   if (withdrawalPhase === "before") applyWithdrawal(state, "before", withdrawalRand);
@@ -241,16 +241,19 @@ export function playNextGala(prev: GameState): GameState {
     const { points: scheme, min } = getMinNominees(state.activeIds.length);
 
     const returning = state.repechage?.galaNumber === state.gala ? state.repechage : undefined;
-    const excludedIds = returning ? [returning.returnedId] : [];
-    const eligibleIds = state.activeIds.filter(id => !excludedIds.includes(id));
     const withdrawal = state.withdrawals.find(w => w.galaNumber === state.gala);
+    const excludedIds = [
+      ...(returning ? [returning.returnedId] : []),
+      ...(withdrawal ? [withdrawal.replacementId] : []),
+    ];
+    const eligibleIds = state.activeIds.filter(id => !excludedIds.includes(id));
     const events: GalaRecord["events"] = { ...(returning ? { repechage: returning } : {}), ...(withdrawal ? { withdrawal } : {}) };
 
     // Inmunidad aleatoria
     // Regla: no puede haber inmunidad cuando solo quedan 4 concursantes.
     const IMMUNITY_P = 0.22;
     let immuneId: string | undefined;
-    if (state.activeIds.length > 4 && rand() < IMMUNITY_P) {
+    if (eligibleIds.length > 4 && rand() < IMMUNITY_P) {
       immuneId = pickOne(eligibleIds, rand);
       events.immunity = { winnerId: immuneId };
       setStatusForGala(state, immuneId, galaIndex0, "Exento");

@@ -213,6 +213,13 @@ for(let seed=1;seed<=500;seed++) {
     if(state.withdrawals.length>prev.withdrawals.length) {
       if(w.phase==='before')beforeWithdrawals++;else afterWithdrawals++;
       if(state.finalReady)finalReadyWithdrawals++;
+      assert(prev.activeIds.length>5);
+      assert(state.activeIds.length>=5);
+      if(w.phase==='after')assert(state.activeIds.length>5);
+      assert.equal(state.timeline[w.replacementId][w.galaNumber-1],'Entra');
+      const arrivalGala=state.galas.find(g=>g.galaNumber===w.galaNumber);
+      assert(!arrivalGala.nominations.some(n=>n.fromId===w.replacementId || w.replacementId in n.points));
+      assert(!state.pendingNominees.includes(w.replacementId));
       assert(prev.activeIds.includes(w.departedId));
       assert(!state.activeIds.includes(w.departedId));
       assert(state.activeIds.includes(w.replacementId));
@@ -242,7 +249,8 @@ for(let seed=1;seed<=500;seed++) {
   }
   maxWithdrawals=Math.max(maxWithdrawals,state.withdrawals.length);
 }
-assert(beforeWithdrawals>0&&afterWithdrawals>0&&finalReadyWithdrawals>0);
+assert(beforeWithdrawals>0&&afterWithdrawals>0);
+assert.equal(finalReadyWithdrawals,0);
 let withdrawalFixture=initGame(Array.from({length:10},(_,i)=>'Fixture '+i),1,{withdrawals:true,reserves});
 for(let i=0;i<4;i++)applyWithdrawal(withdrawalFixture,'before',()=>0);
 assert.equal(withdrawalFixture.withdrawals.length,3);
@@ -252,3 +260,35 @@ for(const options of [{withdrawals:false,reserves},{withdrawals:true,reserves:[]
   assert.equal(state.withdrawals.length,0);
 }
 console.log('PASS: 500 withdrawal seasons', {beforeWithdrawals,afterWithdrawals,finalReadyWithdrawals,maxWithdrawals});
+
+// Five or fewer residents: neither phase may trigger a withdrawal.
+for(const count of [3,4,5])for(const phase of ['before','after']) {
+  const state=initGame(Array.from({length:count},(_,i)=>'Resident '+i),1,{withdrawals:true,reserves});
+  applyWithdrawal(state,phase,()=>0);
+  assert.equal(state.withdrawals.length,0);
+}
+// A nominated departure is removed before computing this gala's eviction.
+let checkedNominatedDeparture=false;
+for(let seed=1;seed<=1000&&!checkedNominatedDeparture;seed++) {
+  let state=initGame(Array.from({length:10},(_,i)=>'Resident '+i),seed,{withdrawals:true,reserves});
+  while(!state.finished) {
+    const previous=state;state=playNextGala(state);
+    const w=state.withdrawals.at(-1);
+    if(state.withdrawals.length>previous.withdrawals.length&&w.phase==='before'&&previous.pendingNominees.includes(w.departedId)) {
+      const vote=state.publicVotes.at(-1);
+      assert.equal(vote.nominees.length,previous.pendingNominees.length-1);
+      assert(!(w.departedId in vote.percents));
+      assert(Math.abs(Object.values(vote.percents).reduce((a,b)=>a+b,0)-100)<1e-8);
+      checkedNominatedDeparture=true;break;
+    }
+  }
+}
+assert(checkedNominatedDeparture);
+// Reproduce the engine RNG: current-gala event changes feed directly into its eviction.
+const {generateHouseRound}=load('popularity');
+let current=playNextGala(initGame(Array.from({length:10},(_,i)=>'Resident '+i),42));
+const expectedState=structuredClone(current),eventRand=mulberry32(current.seed+current.gala*99991);
+generateHouseRound(expectedState,eventRand);
+const expectedVote=audiencePercents(current.pendingNominees,expectedState.popularity,eventRand);
+assert.equal(JSON.stringify(playNextGala(current).publicVotes.at(-1).percents),JSON.stringify(expectedVote));
+console.log('PASS: arrival exemption, no withdrawals at five or fewer, departed nominee removed, same-gala popularity used.');

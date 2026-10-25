@@ -6,22 +6,14 @@ export function HouseEvents({ state, round, onContinue }: { state: GameState; ro
     <section className="card cardPad">
       <div className="row">
         <h2 style={{ fontSize: 18, margin: 0 }}>En la casa · Gala {round.galaNumber}</h2>
-        <span className="badge">Popularidad del público · 0–100</span>
       </div>
-      <p className="muted">Lo ocurrido en la casa cambia la opinión del público. Todos comenzaron con 50 puntos.</p>
+      <p className="muted">Lo ocurrido en la casa cambia la opinión del público.</p>
       <div style={{ display: "grid", gap: 12 }}>
         {round.events.map((event, index) => (
           <article key={index} className="houseEvent" style={{ borderLeftColor: event.positive ? "#36a879" : "#d58363" }}>
             <strong>{event.positive ? "↑" : "↓"} {event.title}</strong>
             <div style={{ marginTop: 6, fontWeight: 700 }}>{event.participantIds.map(id => names.get(id)).join(" · ")}</div>
             <p style={{ margin: "6px 0 10px", lineHeight: 1.5 }}>{event.description}</p>
-            <div className="row">
-              {event.changes.map(change => (
-                <span className="badge" key={change.id}>
-                  {names.get(change.id)}: {change.before} → <b>{change.after}</b> ({change.delta > 0 ? "+" : ""}{change.delta})
-                </span>
-              ))}
-            </div>
             {event.conflict && <p className="muted" style={{ marginBottom: 0 }}>Esta discusión aumenta la probabilidad de que se nominen entre sí, salvo que les proteja una conexión, pareja o pacto.</p>}
             {event.effect === "pact" && <p className="muted">Pacto de esta gala: comparten objetivos siempre que haya suficientes. Si faltan nombres, completan los votos y reservan los puntos más bajos para sus vínculos.</p>}
             {(event.effect === "connection" || event.effect === "romance") && <p className="muted">Se evitarán en esta gala. Solo se nominarán si faltan opciones, con los puntos más bajos posibles.</p>}
