@@ -23,9 +23,9 @@ export function HouseEvents({ state, round, onContinue }: { state: GameState; ro
               ))}
             </div>
             {event.conflict && <p className="muted" style={{ marginBottom: 0 }}>Esta discusión aumenta la probabilidad de que se nominen entre sí, salvo que les proteja una conexión, pareja o pacto.</p>}
-            {event.effect === "pact" && <p className="muted">Pacto de esta gala: protección mutua y los mismos objetivos de nominación, con posible cambio en el reparto de puntos.</p>}
-            {(event.effect === "connection" || event.effect === "romance") && <p className="muted">Protección mutua: no se nominarán durante esta gala.</p>}
-            {event.effect === "couple" && <p className="muted">Pareja: no se nominarán mientras sigan juntos.</p>}
+            {event.effect === "pact" && <p className="muted">Pacto de esta gala: comparten objetivos siempre que haya suficientes. Si faltan nombres, completan los votos y reservan los puntos más bajos para sus vínculos.</p>}
+            {(event.effect === "connection" || event.effect === "romance") && <p className="muted">Se evitarán en esta gala. Solo se nominarán si faltan opciones, con los puntos más bajos posibles.</p>}
+            {event.effect === "couple" && <p className="muted">Pareja: se evitarán mientras sigan juntos. Si es imprescindible completar la nominación, se darán los puntos más bajos posibles.</p>}
             {event.effect === "breakup" && <p className="muted">La protección de pareja termina: pueden volver a nominarse.</p>}
           </article>
         ))}

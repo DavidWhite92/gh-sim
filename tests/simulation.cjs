@@ -56,11 +56,21 @@ for(let seed=1;seed<=100;seed++) {
       const protections = protectedPairs(state, round.events);
       for(const pact of round.events.filter(event=>event.effect==='pact')) {
         const votes=gala.nominations.filter(n=>pact.participantIds.includes(n.fromId));
-        for(const vote of votes) assert.equal(Object.keys(vote.points).sort().join(),Object.keys(votes[0].points).sort().join(),'pact shares targets');
+        const common=state.activeIds.filter(id=>votes.every(n=>id!==n.fromId && id!==gala.events.immunity?.winnerId && !protections.some(g=>g.includes(n.fromId)&&g.includes(id))));
+        if(common.length >= (state.activeIds.length===4 ? 2 : 3))
+          for(const vote of votes) assert.equal(Object.keys(vote.points).sort().join(),Object.keys(votes[0].points).sort().join(),'pact shares targets when feasible');
       }
       for(const nom of gala.nominations) {
+        const required=state.activeIds.length===4 ? 2 : 3;
+        assert.equal(Object.keys(nom.points).length,required,'complete ballot');
+        assert.equal(Object.values(nom.points).sort().join(),required===2?'1,2':'1,2,3');
+        const protectedId=id=>protections.some(group=>group.includes(nom.fromId)&&group.includes(id));
+        const available=state.activeIds.filter(id=>id!==nom.fromId&&id!==gala.events.immunity?.winnerId&&!protectedId(id));
+        const protectedVotes=Object.entries(nom.points).filter(([id])=>protectedId(id));
+        assert.equal(protectedVotes.length, Math.max(0,required-available.length),'only unavoidable protected votes');
+        for(const [,pts] of protectedVotes) assert(pts<=protectedVotes.length,'lowest points go to protected targets');
         for(const target of Object.keys(nom.points))
-          assert(!protections.some(group=>group.includes(nom.fromId)&&group.includes(target)),'never nominate protected participant');
+          assert(state.activeIds.includes(target),'target is still active');
         assert(!Object.keys(nom.points).includes(nom.fromId));
         if(gala.events.immunity) assert(!Object.keys(nom.points).includes(gala.events.immunity.winnerId));
       }
@@ -117,8 +127,8 @@ assert(protectedPairs(smallGame,[]).some(pair=>pair.includes(x)&&pair.includes(y
 smallGame.couples=[];
 assert.equal(protectedPairs(smallGame,[event('breakup',[x,y])]).length,0,'breakup removes couple protection');
 votes=buildNominations(smallGame,[2,1],w,[event('pact',[x,y,z])],mulberry32(3));
-for(const n of votes.filter(n=>[x,y,z].includes(n.fromId))) assert.equal(Object.keys(n.points).length,0,'never force betrayal if no targets');
+for(const n of votes.filter(n=>[x,y,z].includes(n.fromId))) assert.equal(Object.keys(n.points).length,2,'complete ballot even if all eligible targets are protected');
 const {templates}=load('houseEventCatalog');
 const {moreEvents}=load('moreEvents');
 assert(templates.length+moreEvents.length>=100);
-console.log('PASS: '+(templates.length+moreEvents.length)+' unique event templates; 4–8 events; pacts, couples, breakups, temporary connections, immunity and reduced ballots.');
+console.log('PASS: '+(templates.length+moreEvents.length)+' unique event templates; 4–8 events; pacts, couples, breakups, temporary connections, immunity and complete ballots with lowest points for protected targets.');

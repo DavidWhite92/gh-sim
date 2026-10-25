@@ -63,7 +63,7 @@ export function protectedPairs(state: GameState, events: HouseEvent[]): string[]
   ];
 }
 
-/** Protections outrank disputes; pact members share eligible targets, with shuffled points. */
+/** Completa todos los votos: objetivos comunes primero, vínculos solo como último recurso. */
 export function buildNominations(state: GameState, scheme: number[], immuneId: string | undefined, events: HouseEvent[], rand: () => number) {
   const groups = protectedPairs(state, events);
   const eligibleFor = (fromId: string) => state.activeIds.filter(id =>
@@ -81,9 +81,14 @@ export function buildNominations(state: GameState, scheme: number[], immuneId: s
   }
   return shuffle(state.activeIds, rand).map(fromId => {
     const agreed = pactTargets.get(fromId);
-    const targets = agreed
-      ? shuffle(agreed, rand)
-      : nominationTargets(fromId, eligibleFor(fromId), scheme.length, events, rand);
+    const targets = agreed ? shuffle(agreed, rand) : [];
+    const unprotected = eligibleFor(fromId).filter(id => !targets.includes(id));
+    targets.push(...nominationTargets(fromId, unprotected, scheme.length - targets.length, events, rand));
+    // Completa siempre la papeleta: los vínculos reciben los puntos más bajos.
+    const protectedTargets = state.activeIds.filter(id =>
+      id !== fromId && id !== immuneId && !targets.includes(id));
+    targets.push(...nominationTargets(fromId, protectedTargets, scheme.length - targets.length, events, rand));
+    if (targets.length !== scheme.length) throw new Error("No hay suficientes objetivos válidos para completar la nominación.");
     return { fromId, points: Object.fromEntries(targets.map((id, i) => [id, scheme[i]])) };
   });
 }
