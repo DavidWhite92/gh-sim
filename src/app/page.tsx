@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ContestantPicker } from "@/components/ContestantPicker";
-import type { ContestantInput } from "@/lib/types";
+import type { ContestantInput, GameOptions } from "@/lib/types";
 
 export default function HomePage() {
   const router = useRouter();
@@ -10,8 +10,8 @@ export default function HomePage() {
   return (
     <div className="homePage">
       <ContestantPicker
-        onStart={(contestants: ContestantInput[], seed: number, options: { repechage: boolean }) => {
-          const payload = encodeURIComponent(JSON.stringify({ contestants, seed, repechage: options.repechage }));
+        onStart={(contestants: ContestantInput[], seed: number, options: GameOptions) => {
+          const payload = encodeURIComponent(JSON.stringify({ contestants, seed, ...options }));
           router.push(`/simulator?setup=${payload}`);
         }}
       />

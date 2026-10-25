@@ -7,6 +7,7 @@ import { STATUS_COLORS, type GameState } from "@/lib/types";
 import { HouseEvents } from "@/components/HouseEvents";
 import { PopularityTable } from "@/components/PopularityTable";
 import { RepechageResults } from "@/components/RepechageResults";
+import { WithdrawalNotice } from "@/components/WithdrawalNotice";
 import { ResultsTable } from "@/components/ResultsTable";
 import { GalaSummary } from "@/components/GalaSummary";
 
@@ -49,7 +50,7 @@ export default function SimulatorClient() {
     if (!setup) return null;
     try {
       const parsed = JSON.parse(decodeURIComponent(setup));
-      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed, { repechage: parsed.repechage === true });
+      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed, { repechage: parsed.repechage === true, withdrawals: parsed.withdrawals === true, reserves: Array.isArray(parsed.reserves) ? parsed.reserves : [] });
     } catch {
       return null;
     }
@@ -64,6 +65,7 @@ export default function SimulatorClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup]);
 
+  const [withdrawalStep, setWithdrawalStep] = useState(0);
   const [repechageStep, setRepechageStep] = useState(0);
 
   // Expulsión reveal
@@ -145,6 +147,11 @@ export default function SimulatorClient() {
   const currentRepechage = lastGala?.galaNumber === state.gala - 1 ? lastGala.events.repechage : undefined;
   const isRepechagePending = !!currentRepechage && repechageStep < 2;
   const isReturnHidden = !!currentRepechage && repechageStep === 0;
+  const currentWithdrawal = state.withdrawals.find(w => w.galaNumber === state.houseRounds[state.houseRounds.length - 1]?.galaNumber);
+  const isWithdrawalPending = !!currentWithdrawal && withdrawalStep < 2;
+  const isWithdrawalHidden = !!currentWithdrawal && withdrawalStep === 0;
+  const beforeWithdrawalPending = isWithdrawalPending && currentWithdrawal?.phase === "before";
+  const afterWithdrawalPending = isWithdrawalPending && currentWithdrawal?.phase === "after";
 
   const lastEvictionGala = (state as any).lastEvictionGala as number | null;
   const isEvictionToReveal =
@@ -171,6 +178,7 @@ export default function SimulatorClient() {
   const displayEliminated = useMemo(() => {
     const set = new Set(state.eliminatedIds);
     const vote: any = (state.publicVotes ?? [])[state.publicVotes.length - 1];
+    if (isWithdrawalHidden && currentWithdrawal) set.delete(currentWithdrawal.departedId);
     if (!vote) return set;
 
     // expulsión normal
@@ -196,13 +204,14 @@ export default function SimulatorClient() {
       set.add(currentRepechage.returnedId);
     }
     return set;
-  }, [state.eliminatedIds, state.publicVotes, state.finalRanking, isEvictionToReveal, evictStep, winnerAnnounced, isReturnHidden, currentRepechage]);
+  }, [state.eliminatedIds, state.publicVotes, state.finalRanking, isEvictionToReveal, evictStep, winnerAnnounced, isReturnHidden, currentRepechage, isWithdrawalHidden, currentWithdrawal]);
   const isFinalFinished = !!((state as any).finished);
 
   // En la gala tras última expulsión, no hay nominaciones: solo finalistas
   const finalists = (state as any).finalists as string[] | undefined;
 
   const onCelebrate = () => {
+    setWithdrawalStep(0);
     setRepechageStep(0);
     setEventsSeen(false);
     setShowPopularity(false);
@@ -231,7 +240,7 @@ export default function SimulatorClient() {
   const canShowDefinitives = revealNomCount >= totalNoms && (!hasLeaderThisGala || showLeaderSave);
 
   const revealNominations = (count: number) => {
-    if (isRepechagePending || !eventsSeen || !hasNomsThisGala || isEvictionToReveal || isFinalVoteToReveal) return;
+    if (isWithdrawalPending || isRepechagePending || !eventsSeen || !hasNomsThisGala || isEvictionToReveal || isFinalVoteToReveal) return;
     const nextCount = Math.min(totalNoms, count);
     setRevealNomCount(nextCount);
     if (nextCount >= totalNoms && !hasLeaderThisGala) {
@@ -241,7 +250,7 @@ export default function SimulatorClient() {
   };
   // Botón celebrar solo cuando ya se han revelado definitivos (o cuando toca final)
   const canCelebrate =
-    eventsSeen && !isRepechagePending && !isFinalFinished && !isEvictionToReveal && !isFinalVoteToReveal &&
+    eventsSeen && !isWithdrawalPending && !isRepechagePending && !isFinalFinished && !isEvictionToReveal && !isFinalVoteToReveal &&
     (
       (isFinalReady && !isEvictionToReveal && !isFinalVoteToReveal) ||
       (hasNomsThisGala && canShowDefinitives && showTable) ||
@@ -274,13 +283,14 @@ export default function SimulatorClient() {
             paddingBottom: 4,
           }}
         >
-          {alphabeticalContestants.map(c => {
+          {alphabeticalContestants.filter(c => !(isWithdrawalHidden && c.id === currentWithdrawal?.replacementId)).map(c => {
             const isGrey = displayEliminated.has(c.id);
             const src = getPhotoUrl(c.id);
             const timeline = state.timeline[c.id] ?? [];
             // Conserva los nominados de la votación pendiente hasta revelar al expulsado.
             const pendingEvictionNominee =
-              isEvictionToReveal && evictStep < 5 && lastVote.nominees.includes(c.id);
+              isEvictionToReveal && evictStep < 5 && (lastVote.nominees.includes(c.id) ||
+                (isWithdrawalHidden && c.id === currentWithdrawal?.departedId && timeline[timeline.length - 2] === "Nominado"));
             const pendingFinalist =
               isFinalVoteToReveal && !winnerAnnounced && lastVote.nominees.includes(c.id);
             const status = !isGrey
@@ -440,8 +450,32 @@ export default function SimulatorClient() {
         />
       )}
 
+      {eventsSeen && currentWithdrawal && isWithdrawalPending &&
+        (currentWithdrawal.phase === "before" || !isEvictionToReveal) && (
+        <section className="card cardPad" aria-live="polite">
+          {withdrawalStep === 0 ? (
+            <>
+              <h2 style={{ marginTop: 0 }}>Una decisión inesperada</h2>
+              <p>Una persona ha decidido abandonar la casa. Un reserva ocupará su lugar.</p>
+              <button className="btn btnPrimary" onClick={() => setWithdrawalStep(1)}>Revelar abandono</button>
+            </>
+          ) : (
+            <>
+              <WithdrawalNotice state={state} record={currentWithdrawal} />
+              <button className="btn btnPrimary" onClick={() => {
+                setWithdrawalStep(2);
+                if (isFinalReady && !isEvictionToReveal) setShowTable(true);
+              }}>Continuar tras el abandono</button>
+            </>
+          )}
+        </section>
+      )}
+      {eventsSeen && currentWithdrawal && !isWithdrawalPending && !hasNomsThisGala && (
+        <section className="card cardPad"><WithdrawalNotice state={state} record={currentWithdrawal} /></section>
+      )}
+
       {/* REVEAL EXPULSIÓN */}
-      {eventsSeen && isEvictionToReveal && (
+      {eventsSeen && !beforeWithdrawalPending && isEvictionToReveal && (
         <section className="card cardPad" style={{ textAlign: "center" }}>
           <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1 }}>
             {evictStep < 5
@@ -458,7 +492,7 @@ export default function SimulatorClient() {
                   setEvictDoneForGala(lastVote.galaNumber);
                   setEvictStep(6);
                   // tras revelar la expulsión, solo mostramos la tabla si esta expulsión deja la final preparada
-                  if (isFinalReady) setShowTable(true);
+                  if (isFinalReady && !afterWithdrawalPending) setShowTable(true);
                 }
               }}
             >
@@ -475,7 +509,7 @@ export default function SimulatorClient() {
           <div style={{ fontWeight: 900, fontSize: 22 }}>{idToName.get(lastVote.expelledId)}</div>
 
           {/* Si esta expulsión deja 3, mostramos finalistas */}
-          {isFinalReady && finalists?.length === 3 && (
+          {isFinalReady && !isWithdrawalPending && finalists?.length === 3 && (
             <>
               <hr className="soft" />
               <div style={{ fontWeight: 900, marginBottom: 8 }}>Finalistas</div>
@@ -553,7 +587,7 @@ export default function SimulatorClient() {
         </section>
       )}
 
-      {eventsSeen && !isEvictionToReveal && currentRepechage && isRepechagePending && (
+      {eventsSeen && !isWithdrawalPending && !isEvictionToReveal && currentRepechage && isRepechagePending && (
         <section className="card cardPad" aria-live="polite">
           {repechageStep === 0 ? (
             <>
@@ -573,7 +607,7 @@ export default function SimulatorClient() {
       )}
 
       {/* NOMINACIONES: solo si hay gala record y ya no estamos bloqueados por expulsión */}
-      {eventsSeen && !isRepechagePending && hasNomsThisGala && !isEvictionToReveal && !isFinalVoteToReveal && (
+      {eventsSeen && !isWithdrawalPending && !isRepechagePending && hasNomsThisGala && !isEvictionToReveal && !isFinalVoteToReveal && (
         <GalaSummary
           state={state}
           gala={lastGala!}
@@ -588,7 +622,7 @@ export default function SimulatorClient() {
       )}
 
       {/* Botón para confirmar salvación del líder y mostrar definitivos */}
-      {eventsSeen && !isRepechagePending && hasNomsThisGala && hasLeaderThisGala && !isEvictionToReveal && revealNomCount >= totalNoms && !showLeaderSave && (
+      {eventsSeen && !isWithdrawalPending && !isRepechagePending && hasNomsThisGala && hasLeaderThisGala && !isEvictionToReveal && revealNomCount >= totalNoms && !showLeaderSave && (
         <section className="card cardPad">
           <div className="row">
             <div style={{ fontWeight: 900 }}>Acción del líder</div>

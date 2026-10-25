@@ -191,3 +191,64 @@ assert(windows.get(11).has(3)&&windows.get(11).has(5));
 let disabled=initGame(Array.from({length:10},(_,i)=>'Disabled '+i),7);
 while(!disabled.finished){disabled=playNextGala(disabled);assert(!disabled.repechage);}
 console.log('PASS: '+comebacks+' enabled seasons (10–25 contestants), disabled option, timing windows, voting exemption, next-gala eligibility and '+secondExits+' subsequent evictions.');
+// Withdrawals: full seasons, both phases, replacement ballots, chronology and repechage.
+const reserves = Array.from({length:12}, (_,i)=>({name:'Reserve '+i}));
+const {withdrawalChance,applyWithdrawal}=load('withdrawals');
+assert.equal(withdrawalChance(0),0.03);
+assert.equal(withdrawalChance(1),0.015);
+assert.equal(withdrawalChance(2),0.0075);
+assert.equal(withdrawalChance(3),0);
+let beforeWithdrawals=0,afterWithdrawals=0,finalReadyWithdrawals=0,maxWithdrawals=0;
+for(let seed=1;seed<=500;seed++) {
+  let state=initGame(Array.from({length:10+seed%16},(_,i)=>'Resident '+i),seed,{withdrawals:true,reserves,repechage:seed%2===0});
+  assert.equal(state.reserves.length,10);
+  let turns=0;
+  while(!state.finished) {
+    const prev=state;state=playNextGala(state);
+    assert(++turns<30,'season terminates');
+    assert(state.withdrawals.length<=3);
+    assert.equal(state.contestants.length,prev.contestants.length+state.withdrawals.length-prev.withdrawals.length);
+    assert.equal(new Set([...state.activeIds,...state.eliminatedIds]).size,state.contestants.length);
+    const w=state.withdrawals.at(-1);
+    if(state.withdrawals.length>prev.withdrawals.length) {
+      if(w.phase==='before')beforeWithdrawals++;else afterWithdrawals++;
+      if(state.finalReady)finalReadyWithdrawals++;
+      assert(prev.activeIds.includes(w.departedId));
+      assert(!state.activeIds.includes(w.departedId));
+      assert(state.activeIds.includes(w.replacementId));
+      assert.equal(state.popularity[w.replacementId],50);
+      assert.equal(state.timeline[w.departedId][w.galaNumber-1],'Abandono');
+      assert(state.timeline[w.replacementId].slice(0,w.galaNumber-1).every(s=>s===''));
+      assert(!state.pendingNominees.includes(w.departedId));
+      assert(!state.reserves.some(c=>c.id===w.replacementId));
+      const vote=state.publicVotes.find(v=>v.galaNumber===w.galaNumber&&v.kind==='eviction');
+      if(vote) {
+        assert(!vote.nominees.includes(w.replacementId));
+        assert(w.phase==='after'||!vote.nominees.includes(w.departedId));
+        const a=state.eliminatedIds.indexOf(w.departedId),b=state.eliminatedIds.indexOf(vote.expelledId);
+        if(b!==-1)assert(w.phase==='before'?a<b:a>b,'exit order');
+      }
+      assert.equal(state.galas.find(g=>g.galaNumber===w.galaNumber).events.withdrawal.departedId,w.departedId);
+    }
+    const gala=state.galas.at(-1);
+    if(gala?.galaNumber===state.gala-1&&gala.nominations.length) {
+      for(const ballot of gala.nominations) {
+        assert(state.activeIds.includes(ballot.fromId));
+        assert.equal(Object.keys(ballot.points).length,state.activeIds.length===4?2:3);
+        assert(Object.keys(ballot.points).every(id=>state.activeIds.includes(id)&&id!==ballot.fromId));
+      }
+    }
+    if(state.repechage)assert(state.repechage.candidateIds.every(id=>!state.withdrawals.some(w=>w.departedId===id&&w.galaNumber<=state.repechage.galaNumber)));
+  }
+  maxWithdrawals=Math.max(maxWithdrawals,state.withdrawals.length);
+}
+assert(beforeWithdrawals>0&&afterWithdrawals>0&&finalReadyWithdrawals>0);
+let withdrawalFixture=initGame(Array.from({length:10},(_,i)=>'Fixture '+i),1,{withdrawals:true,reserves});
+for(let i=0;i<4;i++)applyWithdrawal(withdrawalFixture,'before',()=>0);
+assert.equal(withdrawalFixture.withdrawals.length,3);
+for(const options of [{withdrawals:false,reserves},{withdrawals:true,reserves:[]}]) {
+  let state=initGame(Array.from({length:10},(_,i)=>'Fixture '+i),1,options);
+  while(!state.finished)state=playNextGala(state);
+  assert.equal(state.withdrawals.length,0);
+}
+console.log('PASS: 500 withdrawal seasons', {beforeWithdrawals,afterWithdrawals,finalReadyWithdrawals,maxWithdrawals});

@@ -17,14 +17,16 @@ export function PopularityTable({ state }: { state: GameState }) {
           </tr></thead>
           <tbody>{ordered.map(c => {
             const score = state.popularity[c.id];
+            const entryGala = state.timeline[c.id].findIndex(status => !!status) + 1;
             const rank = ordered.findIndex(other => state.popularity[other.id] === score) + 1;
             return <tr key={c.id}>
-              <td className="nameCell">{c.name}</td><td>{rank}</td><td>50</td>
+              <td className="nameCell">{c.name}</td><td>{rank}</td><td>{entryGala === 1 ? 50 : "—"}</td>
               {state.houseRounds.map((round, i) => {
-                const value = round.popularity[c.id];
-                const previous = i === 0 ? 50 : state.houseRounds[i - 1].popularity[c.id];
+                if (round.galaNumber < entryGala) return <td key={round.galaNumber} title="Todavía no había entrado">—</td>;
+                const value = round.popularity[c.id] ?? 50;
+                const previous = i === 0 ? 50 : state.houseRounds[i - 1].popularity[c.id] ?? 50;
                 const delta = value - previous;
-                const present = round.activeIds.includes(c.id);
+                const present = round.activeIds.includes(c.id) || round.galaNumber === entryGala;
                 const details = round.events.filter(event => event.participantIds.includes(c.id)).map(event => event.title).join(" · ");
                 return <td key={round.galaNumber} style={{ opacity: present ? 1 : 0.55 }} title={present ? details || "Sin cambios" : "Fuera de la casa: popularidad congelada"}>
                   {value}{delta !== 0 && <span> ({delta > 0 ? "+" : ""}{delta})</span>}

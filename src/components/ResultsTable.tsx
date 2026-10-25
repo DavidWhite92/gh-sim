@@ -177,11 +177,11 @@ export function ResultsTable({ state }: { state: GameState }) {
                   <td className="nameCell" style={{ textAlign: "center", border: cellBorder }}>{name}</td>
                   {(() => {
   // Si alguien fue expulsado, pintamos en gris claro las celdas vacías posteriores
-  let outside = false;
+  let outside = true;
   const absentColumns = row.map(status => {
-    if (status === "Repesca" || status === "Entra") outside = false;
+    if (status && status !== "Expulsado" && status !== "Expulsada" && status !== "Abandono") outside = false;
     const absent = outside && !status;
-    if (status === "Expulsado" || status === "Expulsada") outside = true;
+    if (status === "Expulsado" || status === "Expulsada" || status === "Abandono") outside = true;
     return absent;
   });
   return colIndices.map((i) => {

@@ -1,4 +1,5 @@
 "use client";
+import { WithdrawalNotice } from "@/components/WithdrawalNotice";
 
 import { RepechageResults } from "@/components/RepechageResults";
 import { GalaRecord, GameState } from "@/lib/types";
@@ -62,7 +63,7 @@ export function GalaSummary({
   return (
     <section className="card cardPad">
       <div className="row">
-        <div style={{ fontWeight: 900 }}>Gala {gala.galaNumber} · Nominaciones</div>
+        <div style={{ fontWeight: 900 }}>Gala {gala.galaNumber} · {gala.nominations.length ? "Nominaciones" : "Resumen"}</div>
         <span className="badge muted">Los provisionales solo aparecen si hay líder</span>
         <div className="spacer" />
         {!readOnly && revealCount < gala.nominations.length && (
@@ -79,6 +80,9 @@ export function GalaSummary({
         )}
       </div>
 
+      {gala.events.withdrawal && (
+        <div style={{ marginTop: 14 }}><WithdrawalNotice state={state} record={gala.events.withdrawal} /></div>
+      )}
       {gala.events.repechage && (
         <div style={{ marginTop: 14 }}>
           <RepechageResults state={state} record={gala.events.repechage} />
@@ -172,7 +176,7 @@ export function GalaSummary({
         </>
       )}
 
-      {showDefinitives && (
+      {showDefinitives && gala.nominations.length > 0 && (
         <>
           <hr className="soft" />
           <div className="row">

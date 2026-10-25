@@ -1,5 +1,6 @@
+import { applyWithdrawal, withdrawalChance } from "./withdrawals";
 import { generateHouseRound, audiencePercents, buildNominations } from "./popularity";
-import { GameState, Status, GalaRecord, ContestantInput, ContestantSetup, Gender } from "./types";
+import { GameState, Status, GalaRecord, ContestantInput, ContestantSetup, Gender, GameOptions } from "./types";
 import { mulberry32, pickOne } from "./rng";
 
 function slugify(s: string) {
@@ -59,7 +60,7 @@ function computeNomineesByPoints(totals: Record<string, number>, minCount: numbe
   return picked;
 }
 
-export function initGame(inputs: ContestantInput[], seed = Date.now(), options: { repechage?: boolean } = {}): GameState {
+export function initGame(inputs: ContestantInput[], seed = Date.now(), options: GameOptions = {}): GameState {
   const normalized = normalizeInputs(inputs);
 
   const contestants = normalized.map((c, idx) => {
@@ -73,6 +74,16 @@ export function initGame(inputs: ContestantInput[], seed = Date.now(), options: 
     };
   });
 
+  const occupied = new Set(normalized.map(c => `${c.seasonId ?? ""}::${c.name}`));
+  const reserves = (options.reserves ?? []).filter(c => {
+    const key = `${c.seasonId ?? ""}::${c.name}`;
+    if (occupied.has(key)) return false;
+    occupied.add(key);
+    return true;
+  }).slice(0, 10).map((c, i) => ({
+    ...c, id: `r${i}_${slugify(c.name)}`, gender: normalizeGender(c.gender),
+  }));
+
   const activeIds = contestants.map(c => c.id);
   const timeline: GameState["timeline"] = {};
   for (const c of contestants) timeline[c.id] = [];
@@ -81,6 +92,9 @@ export function initGame(inputs: ContestantInput[], seed = Date.now(), options: 
     repechageAfterEvictions: options.repechage && contestants.length >= 9
       ? 3 + Math.floor(mulberry32(seed + 71891)() * (Math.min(8, contestants.length - 6) - 2))
       : undefined,
+    withdrawalsEnabled: options.withdrawals === true,
+    reserves,
+    withdrawals: [],
     seed,
     gala: 1,
     contestants,
@@ -159,6 +173,14 @@ export function playNextGala(prev: GameState): GameState {
     return state;
   }
 
+  // Una tirada por gala, sin afectar al azar del resto cuando están desactivados.
+  const withdrawalRand = mulberry32(state.seed + state.gala * 87071 + 39013);
+  let withdrawalPhase: "before" | "after" | undefined;
+  if (state.withdrawalsEnabled && state.reserves.length && withdrawalRand() < withdrawalChance(state.withdrawals.length)) {
+    withdrawalPhase = state.pendingNominees.length > 0 && withdrawalRand() < 0.5 ? "after" : "before";
+  }
+  if (withdrawalPhase === "before") applyWithdrawal(state, "before", withdrawalRand);
+
   // 1) Expulsión (si hay nominados pendientes)
   if (state.pendingNominees.length > 0) {
     const percents = audiencePercents(state.pendingNominees, state.popularity, rand);
@@ -180,9 +202,11 @@ export function playNextGala(prev: GameState): GameState {
     setStatusForGala(state, expelledId, galaIndex0, "Expulsado");
     state.pendingNominees = [];
 
+    if (withdrawalPhase === "after") applyWithdrawal(state, "after", withdrawalRand, expelledId);
+
     // Una sola repesca, después de la expulsión y antes de las nominaciones.
-    if (!state.repechage && state.repechageAfterEvictions === state.eliminatedIds.length && state.activeIds.length >= 6) {
-      const candidateIds = [...state.eliminatedIds];
+    if (!state.repechage && state.repechageAfterEvictions === state.publicVotes.filter(v => v.kind === "eviction").length && state.activeIds.length >= 6) {
+      const candidateIds = state.eliminatedIds.filter(id => !state.withdrawals.some(w => w.departedId === id));
       const returnPercents = audiencePercents(candidateIds, state.popularity, rand, true);
       const returnedId = [...candidateIds].sort((a, b) => returnPercents[b] - returnPercents[a])[0];
       state.repechage = {
@@ -202,6 +226,11 @@ export function playNextGala(prev: GameState): GameState {
       for (const id of state.activeIds) setStatusForGala(state, id, galaIndex0, "Finalista");
       (state as any).finalReady = true;
       (state as any).finalists = [...state.activeIds];
+      const withdrawal = state.withdrawals.find(w => w.galaNumber === state.gala);
+      if (withdrawal) state.galas.push({
+        galaNumber: state.gala, nominations: [], nominationTotals: {},
+        provisionalNominees: [], finalNominees: [], events: { withdrawal },
+      });
       state.gala += 1;
       return state;
     }
@@ -214,7 +243,8 @@ export function playNextGala(prev: GameState): GameState {
     const returning = state.repechage?.galaNumber === state.gala ? state.repechage : undefined;
     const excludedIds = returning ? [returning.returnedId] : [];
     const eligibleIds = state.activeIds.filter(id => !excludedIds.includes(id));
-    const events: GalaRecord["events"] = returning ? { repechage: returning } : {};
+    const withdrawal = state.withdrawals.find(w => w.galaNumber === state.gala);
+    const events: GalaRecord["events"] = { ...(returning ? { repechage: returning } : {}), ...(withdrawal ? { withdrawal } : {}) };
 
     // Inmunidad aleatoria
     // Regla: no puede haber inmunidad cuando solo quedan 4 concursantes.

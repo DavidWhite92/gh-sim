@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { ContestantSetup, Gender } from "@/lib/types";
+import type { ContestantSetup, Gender, GameOptions } from "@/lib/types";
 
 type SeasonDef = {
   id: string; // "gh1"..."gh10" | "custom"
@@ -421,8 +421,11 @@ const SEASONS: SeasonDef[] = [
 export function ContestantPicker({
   onStart,
 }: {
-  onStart: (contestants: ContestantSetup[], seed: number, options: { repechage: boolean }) => void;
+  onStart: (contestants: ContestantSetup[], seed: number, options: GameOptions) => void;
 }) {
+  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(false);
+  const [reserves, setReserves] = useState<ContestantSetup[]>([]);
+  const [selectionMode, setSelectionMode] = useState<"roster" | "reserves">("roster");
   const [repechageEnabled, setRepechageEnabled] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ContestantSetup[]>([]);
@@ -469,12 +472,17 @@ export function ContestantPicker({
     }
   }, [customList, customHydrated]);
 
-  const canStart = selected.length >= 10 && selected.length <= 25;
+  const canStart = selected.length >= 10 && selected.length <= 25 && (!withdrawalsEnabled || reserves.length > 0);
 
   const selectedKeySet = useMemo(() => {
     return new Set(selected.map((c) => `${c.seasonId ?? ""}::${c.name}`));
   }, [selected]);
 
+  const reserveKeySet = new Set(reserves.map(c => `${c.seasonId ?? ""}::${c.name}`));
+  const pickingReserves = selectionMode === "reserves";
+  const pickedKeys = pickingReserves ? reserveKeySet : selectedKeySet;
+  const otherKeys = pickingReserves ? selectedKeySet : reserveKeySet;
+  const pickLimitReached = pickingReserves ? reserves.length >= 10 : selected.length >= 25;
   const seasonsWithCustom = useMemo((): SeasonDef[] => {
     return [
       ...SEASONS,
@@ -487,22 +495,19 @@ export function ContestantPicker({
   }, [customList, customHydrated]);
 
   function countSelectedForSeason(sid: string) {
-    return selected.reduce((acc, c) => acc + (c.seasonId === sid ? 1 : 0), 0);
+    return (pickingReserves ? reserves : selected).reduce((acc, c) => acc + (c.seasonId === sid ? 1 : 0), 0);
   }
 
   function togglePick(setup: ContestantSetup) {
     const key = `${setup.seasonId ?? ""}::${setup.name}`;
-    const exists = selectedKeySet.has(key);
-
-    if (exists) {
-      setSelected((prev) => prev.filter((c) => `${c.seasonId ?? ""}::${c.name}` !== key));
-      return;
+    if (otherKeys.has(key)) return;
+    const update = pickingReserves ? setReserves : setSelected;
+    if (pickedKeys.has(key)) {
+      update(prev => prev.filter(c => `${c.seasonId ?? ""}::${c.name}` !== key));
+    } else if (!pickLimitReached) {
+      update(prev => [...prev, setup]);
     }
-
-    if (selected.length >= 25) return;
-    setSelected((prev) => [...prev, setup]);
   }
-
   function makeSetupFromSeasonPerson(sid: string, p: { name: string; file?: string; gender?: Gender }): ContestantSetup {
     return {
       name: p.name,
@@ -537,6 +542,8 @@ export function ContestantPicker({
         })
       );
 
+      setReserves(prev => prev.map(c => c.seasonId === CUSTOM_SEASON_ID && c.name === editingCustomName
+        ? { ...c, name: finalName, photoUrl: newEntry.photoUrl, gender: newEntry.gender } : c));
       setEditingCustomName(null);
       setCustomName("");
       setCustomPhotoUrl("");
@@ -576,6 +583,7 @@ export function ContestantPicker({
   function deleteCustom(name: string) {
     setCustomList((prev) => prev.filter((c) => c.name !== name));
     setSelected((prev) => prev.filter((c) => !(c.seasonId === CUSTOM_SEASON_ID && c.name === name)));
+    setReserves(prev => prev.filter(c => !(c.seasonId === CUSTOM_SEASON_ID && c.name === name)));
     if (editingCustomName === name) cancelEditCustom();
   }
 
@@ -583,8 +591,8 @@ export function ContestantPicker({
     setSelected((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  function pickRandom() {
-    if (selected.length >= 25) return;
+  function pickRandom(target: "roster" | "reserves" = "roster") {
+    if (target === "roster" ? selected.length >= 25 : reserves.length >= 10) return;
 
     const pool: ContestantSetup[] = [];
     for (const s of SEASONS) {
@@ -601,11 +609,11 @@ export function ContestantPicker({
       });
     }
 
-    const available = pool.filter((x) => !selectedKeySet.has(`${x.seasonId ?? ""}::${x.name}`));
+    const available = pool.filter((x) => !selectedKeySet.has(`${x.seasonId ?? ""}::${x.name}`) && !reserveKeySet.has(`${x.seasonId ?? ""}::${x.name}`));
     if (available.length === 0) return;
 
     const chosen = available[Math.floor(Math.random() * available.length)];
-    setSelected((prev) => [...prev, chosen]);
+    (target === "reserves" ? setReserves : setSelected)(prev => [...prev, chosen]);
   }
 
   const normalizeSearch = (value: string) =>
@@ -630,7 +638,7 @@ export function ContestantPicker({
           </span>
 
           <button
-            onClick={pickRandom}
+            onClick={() => pickRandom("roster")}
             disabled={selected.length >= 25}
             style={{
               padding: "12px 16px",
@@ -647,7 +655,7 @@ export function ContestantPicker({
 
           <button
             disabled={!canStart}
-            onClick={() => onStart(selected, Date.now(), { repechage: repechageEnabled })}
+            onClick={() => onStart(selected, Date.now(), { repechage: repechageEnabled, withdrawals: withdrawalsEnabled, reserves })}
             style={{
               padding: "12px 16px",
               borderRadius: 12,
@@ -675,6 +683,30 @@ export function ContestantPicker({
           {selected.length >= 10 && ` Entre la 3.ª y la ${Math.min(8, selected.length - 6)}.ª expulsión.`}
         </span>
       </label>
+      <section style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
+        <label className="row">
+          <input type="checkbox" checked={withdrawalsEnabled} onChange={e => setWithdrawalsEnabled(e.target.checked)} />
+          <strong>Activar abandonos</strong>
+        </label>
+        <p style={{ fontSize: 13, opacity: 0.8 }}>Muy poco frecuentes, hasta 3 por temporada. Cada abandono incorpora un reserva al azar. Elige al menos uno para activar esta opción.</p>
+        <div className="row" style={{ marginBottom: 10 }}>
+          <strong>Reservas: {reserves.length}/10</strong>
+          <button className="btn" onClick={() => pickRandom("reserves")} disabled={reserves.length >= 10}>Random reservas</button>
+          <button className="btn" onClick={() => setSelectionMode("reserves")}>Elegir reservas</button>
+        </div>
+        <div className="contestantGrid">
+          {reserves.map((c, i) => <button
+            key={`${c.seasonId}::${c.name}`}
+            title="Quitar de reservas"
+            onClick={() => setReserves(prev => prev.filter((_, index) => index !== i))}
+            style={{ display: "flex", gap: 8, alignItems: "center", padding: 10, borderRadius: 12, border: "1px solid var(--picker-border)", background: "var(--picker-card)" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={c.photoUrl} alt="" width={44} height={44} style={{ objectFit: "cover", borderRadius: 10 }} />
+            <span>{c.name}</span>
+          </button>)}
+        </div>
+      </section>
       <div>
         <label htmlFor="contestant-search" style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
           Buscar concursantes en todas las ediciones
@@ -761,6 +793,9 @@ export function ContestantPicker({
       <section style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
           <strong style={{ fontSize: 16 }}>Concursantes</strong>
+          <button className="btn" aria-pressed={!pickingReserves} onClick={() => setSelectionMode("roster")}>Elegir participantes</button>
+          <button className="btn" aria-pressed={pickingReserves} onClick={() => setSelectionMode("reserves")}>Elegir reservas</button>
+          <b>{pickingReserves ? "Añadiendo a reservas (máx. 10)" : "Añadiendo al reparto (máx. 25)"}</b>
           <span style={{ opacity: 0.7, fontSize: 13 }}>(abre/cierra y clic para añadir/quitar)</span>
         </div>
 
@@ -791,14 +826,15 @@ export function ContestantPicker({
                     s.contestants.map((p) => {
                       const setup = makeSetupFromSeasonPerson(s.id, p);
                       const key = `${setup.seasonId ?? ""}::${setup.name}`;
-                      const picked = selectedKeySet.has(key);
+                      const picked = pickedKeys.has(key);
+                      const blocked = otherKeys.has(key);
 
                       return (
                         <button
                           key={key}
                           onClick={() => togglePick(setup)}
                           aria-pressed={picked}
-                          disabled={!picked && selected.length >= 25}
+                          disabled={blocked || (!picked && pickLimitReached)}
                           style={{
                             display: "flex",
                             gap: 10,
@@ -809,10 +845,10 @@ export function ContestantPicker({
                             border: "1px solid var(--picker-border)",
                             background: picked ? "var(--picker-selected)" : "var(--picker-card)",
                             color: "var(--picker-text)",
-                            cursor: !picked && selected.length >= 25 ? "not-allowed" : "pointer",
-                            opacity: !picked && selected.length >= 25 ? 0.6 : 1,
+                            cursor: blocked || (!picked && pickLimitReached) ? "not-allowed" : "pointer",
+                            opacity: blocked || (!picked && pickLimitReached) ? 0.6 : 1,
                           }}
-                          title={picked ? "Quitar" : "Añadir"}
+                          title={blocked ? "Ya está en el otro grupo" : picked ? "Quitar" : pickingReserves ? "Añadir a reservas" : "Añadir al reparto"}
                         >
                           <div
                             style={{
@@ -860,14 +896,15 @@ export function ContestantPicker({
                         gender: normalizeGender(c.gender),
                       };
                       const key = `${setup.seasonId ?? ""}::${setup.name}`;
-                      const picked = selectedKeySet.has(key);
+                      const picked = pickedKeys.has(key);
+                      const blocked = otherKeys.has(key);
 
                       return (
                         <button
                           key={key}
                           onClick={() => togglePick(setup)}
                           aria-pressed={picked}
-                          disabled={!picked && selected.length >= 25}
+                          disabled={blocked || (!picked && pickLimitReached)}
                           style={{
                             display: "flex",
                             gap: 10,
@@ -878,10 +915,10 @@ export function ContestantPicker({
                             border: "1px solid var(--picker-border)",
                             background: picked ? "var(--picker-selected)" : "var(--picker-card)",
                             color: "var(--picker-text)",
-                            cursor: !picked && selected.length >= 25 ? "not-allowed" : "pointer",
-                            opacity: !picked && selected.length >= 25 ? 0.6 : 1,
+                            cursor: blocked || (!picked && pickLimitReached) ? "not-allowed" : "pointer",
+                            opacity: blocked || (!picked && pickLimitReached) ? 0.6 : 1,
                           }}
-                          title={picked ? "Quitar" : "Añadir"}
+                          title={blocked ? "Ya está en el otro grupo" : picked ? "Quitar" : pickingReserves ? "Añadir a reservas" : "Añadir al reparto"}
                         >
                           <div
                             style={{
