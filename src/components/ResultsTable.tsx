@@ -177,10 +177,16 @@ export function ResultsTable({ state }: { state: GameState }) {
                   <td className="nameCell" style={{ textAlign: "center", border: cellBorder }}>{name}</td>
                   {(() => {
   // Si alguien fue expulsado, pintamos en gris claro las celdas vacías posteriores
-  const expelledAt = (row as any[]).findIndex((v) => v === "Expulsado");
+  let outside = false;
+  const absentColumns = row.map(status => {
+    if (status === "Repesca" || status === "Entra") outside = false;
+    const absent = outside && !status;
+    if (status === "Expulsado" || status === "Expulsada") outside = true;
+    return absent;
+  });
   return colIndices.map((i) => {
     const st = row[i] as Status | undefined;
-    const afterExpelledEmpty = expelledAt >= 0 && i > expelledAt && !st;
+    const afterExpelledEmpty = absentColumns[i];
 
     // Color especial: "Salvado/a" por el líder (no simplemente salvado por no estar nominado)
     const galaNumber = (finished && i === colIndices[colIndices.length - 1]) ? null : (i + 1);

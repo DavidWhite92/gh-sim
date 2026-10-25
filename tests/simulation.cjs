@@ -132,3 +132,62 @@ const {templates}=load('houseEventCatalog');
 const {moreEvents}=load('moreEvents');
 assert(templates.length+moreEvents.length>=100);
 console.log('PASS: '+(templates.length+moreEvents.length)+' unique event templates; 4–8 events; pacts, couples, breakups, temporary connections, immunity and complete ballots with lowest points for protected targets.');
+// Repesca opcional: una vuelta, límites por reparto y exclusión de votos en la gala de regreso.
+const windows=new Map();
+let comebacks=0,secondExits=0;
+for(let size=10;size<=25;size++) {
+  const observed=new Set();windows.set(size,observed);
+  for(let seed=1;seed<=25;seed++) {
+    let state=initGame(Array.from({length:size},(_,i)=>'Return '+i),seed,{repechage:true});
+    const scheduled=state.repechageAfterEvictions;
+    assert(scheduled>=3&&scheduled<=Math.min(8,size-6));
+    observed.add(scheduled);
+    let returned,returnGala,returnRecord;
+    while(!state.finished) {
+      const previous=state;
+      state=playNextGala(state);
+      assert.equal(new Set(state.activeIds).size,state.activeIds.length);
+      assert.equal(new Set(state.eliminatedIds).size,state.eliminatedIds.length);
+      assert(state.activeIds.every(id=>!state.eliminatedIds.includes(id)));
+      if(state.repechage&&!previous.repechage) {
+        comebacks++;
+        returned=state.repechage.returnedId;
+        returnGala=state.repechage.galaNumber;
+        returnRecord=JSON.stringify(state.repechage);
+        const gala=state.galas.at(-1);
+        assert.equal(state.repechage.evictionNumber,scheduled);
+        assert.equal(state.repechage.candidateIds.length,scheduled);
+        assert(state.activeIds.length>=7,'returns no later than six residents remain before return');
+        assert(state.activeIds.includes(returned));
+        assert(!state.eliminatedIds.includes(returned));
+        assert.equal(state.timeline[returned][returnGala-1],'Repesca');
+        assert.equal(gala.nominations.length,state.activeIds.length-1);
+        assert(!gala.nominations.some(n=>n.fromId===returned));
+        assert(gala.nominations.every(n=>!(returned in n.points)&&Object.keys(n.points).length===3));
+        assert(!gala.finalNominees.includes(returned));
+        assert(!gala.provisionalNominees.includes(returned));
+        assert.notEqual(gala.events.immunity?.winnerId,returned);
+        assert.notEqual(gala.events.leader?.leaderId,returned);
+        assert.equal(JSON.stringify(gala.events.repechage),returnRecord);
+        assert(Math.abs(Object.values(state.repechage.percents).reduce((a,b)=>a+b,0)-100)<1e-8);
+        for(let col=0;col<returnGala-1;col++) assert.equal(state.timeline[returned][col],previous.timeline[returned][col]??'');
+      } else if(returned) {
+        assert.equal(JSON.stringify(state.repechage),returnRecord,'only one comeback');
+        const gala=state.galas.at(-1);
+        if(gala.galaNumber===returnGala+1) assert(gala.nominations.some(n=>n.fromId===returned),'can nominate next gala');
+      }
+    }
+    assert(state.repechage,'enabled comeback always happens');
+    if(state.eliminatedIds.includes(returned)) {
+      secondExits++;
+      assert(state.timeline[returned].slice(returnGala).includes('Expulsado'));
+    }
+  }
+}
+assert.equal(comebacks,400);
+assert(secondExits>0);
+assert(windows.get(10).has(3)&&windows.get(10).has(4));
+assert(windows.get(11).has(3)&&windows.get(11).has(5));
+let disabled=initGame(Array.from({length:10},(_,i)=>'Disabled '+i),7);
+while(!disabled.finished){disabled=playNextGala(disabled);assert(!disabled.repechage);}
+console.log('PASS: '+comebacks+' enabled seasons (10–25 contestants), disabled option, timing windows, voting exemption, next-gala eligibility and '+secondExits+' subsequent evictions.');

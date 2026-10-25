@@ -6,6 +6,7 @@ import { initGame, playNextGala } from "@/lib/sim";
 import { STATUS_COLORS, type GameState } from "@/lib/types";
 import { HouseEvents } from "@/components/HouseEvents";
 import { PopularityTable } from "@/components/PopularityTable";
+import { RepechageResults } from "@/components/RepechageResults";
 import { ResultsTable } from "@/components/ResultsTable";
 import { GalaSummary } from "@/components/GalaSummary";
 
@@ -48,7 +49,7 @@ export default function SimulatorClient() {
     if (!setup) return null;
     try {
       const parsed = JSON.parse(decodeURIComponent(setup));
-      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed);
+      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed, { repechage: parsed.repechage === true });
     } catch {
       return null;
     }
@@ -62,6 +63,8 @@ export default function SimulatorClient() {
     if (initial) setState(initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup]);
+
+  const [repechageStep, setRepechageStep] = useState(0);
 
   // Expulsión reveal
   const [evictStep, setEvictStep] = useState(0); // 0..5 text, 5 name, 6 done
@@ -139,6 +142,9 @@ export default function SimulatorClient() {
 
   const lastVote: any = (state.publicVotes ?? [])[state.publicVotes.length - 1];
   const lastGala = state.galas[state.galas.length - 1];
+  const currentRepechage = lastGala?.galaNumber === state.gala - 1 ? lastGala.events.repechage : undefined;
+  const isRepechagePending = !!currentRepechage && repechageStep < 2;
+  const isReturnHidden = !!currentRepechage && repechageStep === 0;
 
   const lastEvictionGala = (state as any).lastEvictionGala as number | null;
   const isEvictionToReveal =
@@ -184,14 +190,20 @@ export default function SimulatorClient() {
         set.delete(thirdId);
       }
     }
+    // El regreso calculado por el motor no se muestra hasta anunciar su nombre.
+    if (isReturnHidden && currentRepechage &&
+        (currentRepechage.returnedId !== vote.expelledId || !isEvictionToReveal || evictStep >= 5)) {
+      set.add(currentRepechage.returnedId);
+    }
     return set;
-  }, [state.eliminatedIds, state.publicVotes, state.finalRanking, isEvictionToReveal, evictStep, winnerAnnounced]);
+  }, [state.eliminatedIds, state.publicVotes, state.finalRanking, isEvictionToReveal, evictStep, winnerAnnounced, isReturnHidden, currentRepechage]);
   const isFinalFinished = !!((state as any).finished);
 
   // En la gala tras última expulsión, no hay nominaciones: solo finalistas
   const finalists = (state as any).finalists as string[] | undefined;
 
   const onCelebrate = () => {
+    setRepechageStep(0);
     setEventsSeen(false);
     setShowPopularity(false);
     // reset pasos UI
@@ -219,7 +231,7 @@ export default function SimulatorClient() {
   const canShowDefinitives = revealNomCount >= totalNoms && (!hasLeaderThisGala || showLeaderSave);
 
   const revealNominations = (count: number) => {
-    if (!eventsSeen || !hasNomsThisGala || isEvictionToReveal || isFinalVoteToReveal) return;
+    if (isRepechagePending || !eventsSeen || !hasNomsThisGala || isEvictionToReveal || isFinalVoteToReveal) return;
     const nextCount = Math.min(totalNoms, count);
     setRevealNomCount(nextCount);
     if (nextCount >= totalNoms && !hasLeaderThisGala) {
@@ -229,7 +241,7 @@ export default function SimulatorClient() {
   };
   // Botón celebrar solo cuando ya se han revelado definitivos (o cuando toca final)
   const canCelebrate =
-    eventsSeen && !isFinalFinished && !isEvictionToReveal && !isFinalVoteToReveal &&
+    eventsSeen && !isRepechagePending && !isFinalFinished && !isEvictionToReveal && !isFinalVoteToReveal &&
     (
       (isFinalReady && !isEvictionToReveal && !isFinalVoteToReveal) ||
       (hasNomsThisGala && canShowDefinitives && showTable) ||
@@ -376,7 +388,7 @@ export default function SimulatorClient() {
       <section className="card cardPad">
         <div className="row">
           <div style={{ fontWeight: 900 }}>{topTitle}</div>
-          <span className="badge">Activos: <b>{state.activeIds.length}</b></span>
+          <span className="badge">Activos: <b>{state.activeIds.length - (isReturnHidden ? 1 : 0)}</b></span>
 
           <div className="spacer" />
 
@@ -541,8 +553,27 @@ export default function SimulatorClient() {
         </section>
       )}
 
+      {eventsSeen && !isEvictionToReveal && currentRepechage && isRepechagePending && (
+        <section className="card cardPad" aria-live="polite">
+          {repechageStep === 0 ? (
+            <>
+              <h2 style={{ marginTop: 0 }}>¡Hay repesca!</h2>
+              <p>La audiencia ha votado para que una persona expulsada vuelva a la casa.</p>
+              <button className="btn btnPrimary" onClick={() => setRepechageStep(1)}>Revelar repesca</button>
+            </>
+          ) : (
+            <>
+              <RepechageResults state={state} record={currentRepechage} />
+              <button className="btn btnPrimary" style={{ marginTop: 12 }} onClick={() => setRepechageStep(2)}>
+                Continuar con las nominaciones
+              </button>
+            </>
+          )}
+        </section>
+      )}
+
       {/* NOMINACIONES: solo si hay gala record y ya no estamos bloqueados por expulsión */}
-      {eventsSeen && hasNomsThisGala && !isEvictionToReveal && !isFinalVoteToReveal && (
+      {eventsSeen && !isRepechagePending && hasNomsThisGala && !isEvictionToReveal && !isFinalVoteToReveal && (
         <GalaSummary
           state={state}
           gala={lastGala!}
@@ -557,7 +588,7 @@ export default function SimulatorClient() {
       )}
 
       {/* Botón para confirmar salvación del líder y mostrar definitivos */}
-      {eventsSeen && hasNomsThisGala && hasLeaderThisGala && !isEvictionToReveal && revealNomCount >= totalNoms && !showLeaderSave && (
+      {eventsSeen && !isRepechagePending && hasNomsThisGala && hasLeaderThisGala && !isEvictionToReveal && revealNomCount >= totalNoms && !showLeaderSave && (
         <section className="card cardPad">
           <div className="row">
             <div style={{ fontWeight: 900 }}>Acción del líder</div>

@@ -10,8 +10,8 @@ export default function HomePage() {
   return (
     <div className="homePage">
       <ContestantPicker
-        onStart={(contestants: ContestantInput[], seed: number) => {
-          const payload = encodeURIComponent(JSON.stringify({ contestants, seed }));
+        onStart={(contestants: ContestantInput[], seed: number, options: { repechage: boolean }) => {
+          const payload = encodeURIComponent(JSON.stringify({ contestants, seed, repechage: options.repechage }));
           router.push(`/simulator?setup=${payload}`);
         }}
       />

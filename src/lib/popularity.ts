@@ -64,28 +64,29 @@ export function protectedPairs(state: GameState, events: HouseEvent[]): string[]
 }
 
 /** Completa todos los votos: objetivos comunes primero, vínculos solo como último recurso. */
-export function buildNominations(state: GameState, scheme: number[], immuneId: string | undefined, events: HouseEvent[], rand: () => number) {
+export function buildNominations(state: GameState, scheme: number[], immuneId: string | undefined, events: HouseEvent[], rand: () => number, excludedIds: string[] = []) {
+  const activeIds = state.activeIds.filter(id => !excludedIds.includes(id));
   const groups = protectedPairs(state, events);
-  const eligibleFor = (fromId: string) => state.activeIds.filter(id =>
+  const eligibleFor = (fromId: string) => activeIds.filter(id =>
     id !== fromId && id !== immuneId && !groups.some(group => group.includes(fromId) && group.includes(id)));
   const pactTargets = new Map<string, string[]>();
   for (const event of events.filter(event => event.effect === "pact")) {
-    const members = event.participantIds.filter(id => state.activeIds.includes(id));
+    const members = event.participantIds.filter(id => activeIds.includes(id));
     if (!members.length) continue;
-    const common = state.activeIds.filter(id => members.every(member => eligibleFor(member).includes(id)));
+    const common = activeIds.filter(id => members.every(member => eligibleFor(member).includes(id)));
     // Tiene en cuenta los conflictos de cualquiera de los miembros para elegir los objetivos.
     const sharedConflicts = events.filter(e => e.conflict && e.participantIds.some(id => members.includes(id)))
       .map(e => ({ ...e, participantIds: [...new Set([...e.participantIds, members[0]])] }));
     const targets = nominationTargets(members[0], common, scheme.length, sharedConflicts, rand);
     for (const member of members) pactTargets.set(member, targets);
   }
-  return shuffle(state.activeIds, rand).map(fromId => {
+  return shuffle(activeIds, rand).map(fromId => {
     const agreed = pactTargets.get(fromId);
     const targets = agreed ? shuffle(agreed, rand) : [];
     const unprotected = eligibleFor(fromId).filter(id => !targets.includes(id));
     targets.push(...nominationTargets(fromId, unprotected, scheme.length - targets.length, events, rand));
     // Completa siempre la papeleta: los vínculos reciben los puntos más bajos.
-    const protectedTargets = state.activeIds.filter(id =>
+    const protectedTargets = activeIds.filter(id =>
       id !== fromId && id !== immuneId && !targets.includes(id));
     targets.push(...nominationTargets(fromId, protectedTargets, scheme.length - targets.length, events, rand));
     if (targets.length !== scheme.length) throw new Error("No hay suficientes objetivos válidos para completar la nominación.");

@@ -59,7 +59,7 @@ function computeNomineesByPoints(totals: Record<string, number>, minCount: numbe
   return picked;
 }
 
-export function initGame(inputs: ContestantInput[], seed = Date.now()): GameState {
+export function initGame(inputs: ContestantInput[], seed = Date.now(), options: { repechage?: boolean } = {}): GameState {
   const normalized = normalizeInputs(inputs);
 
   const contestants = normalized.map((c, idx) => {
@@ -78,6 +78,9 @@ export function initGame(inputs: ContestantInput[], seed = Date.now()): GameStat
   for (const c of contestants) timeline[c.id] = [];
 
   const state: GameState = {
+    repechageAfterEvictions: options.repechage && contestants.length >= 9
+      ? 3 + Math.floor(mulberry32(seed + 71891)() * (Math.min(8, contestants.length - 6) - 2))
+      : undefined,
     seed,
     gala: 1,
     contestants,
@@ -177,6 +180,23 @@ export function playNextGala(prev: GameState): GameState {
     setStatusForGala(state, expelledId, galaIndex0, "Expulsado");
     state.pendingNominees = [];
 
+    // Una sola repesca, después de la expulsión y antes de las nominaciones.
+    if (!state.repechage && state.repechageAfterEvictions === state.eliminatedIds.length && state.activeIds.length >= 6) {
+      const candidateIds = [...state.eliminatedIds];
+      const returnPercents = audiencePercents(candidateIds, state.popularity, rand, true);
+      const returnedId = [...candidateIds].sort((a, b) => returnPercents[b] - returnPercents[a])[0];
+      state.repechage = {
+        galaNumber: state.gala,
+        evictionNumber: candidateIds.length,
+        candidateIds,
+        percents: returnPercents,
+        returnedId,
+      };
+      state.eliminatedIds = state.eliminatedIds.filter(id => id !== returnedId);
+      state.activeIds.push(returnedId);
+      setStatusForGala(state, returnedId, galaIndex0, "Repesca");
+    }
+
     // Si tras expulsión quedan 3: esta gala SOLO expulsa y declara finalistas.
     if (state.activeIds.length === 3) {
       for (const id of state.activeIds) setStatusForGala(state, id, galaIndex0, "Finalista");
@@ -191,32 +211,35 @@ export function playNextGala(prev: GameState): GameState {
   if (state.activeIds.length >= 4) {
     const { points: scheme, min } = getMinNominees(state.activeIds.length);
 
-    const events: GalaRecord["events"] = {};
+    const returning = state.repechage?.galaNumber === state.gala ? state.repechage : undefined;
+    const excludedIds = returning ? [returning.returnedId] : [];
+    const eligibleIds = state.activeIds.filter(id => !excludedIds.includes(id));
+    const events: GalaRecord["events"] = returning ? { repechage: returning } : {};
 
     // Inmunidad aleatoria
     // Regla: no puede haber inmunidad cuando solo quedan 4 concursantes.
     const IMMUNITY_P = 0.22;
     let immuneId: string | undefined;
     if (state.activeIds.length > 4 && rand() < IMMUNITY_P) {
-      immuneId = pickOne(state.activeIds, rand);
+      immuneId = pickOne(eligibleIds, rand);
       events.immunity = { winnerId: immuneId };
       setStatusForGala(state, immuneId, galaIndex0, "Exento");
     }
 
-    const nominations = buildNominations(state, scheme, immuneId, houseRound.events, rand);
+    const nominations = buildNominations(state, scheme, immuneId, houseRound.events, rand, excludedIds);
     const totals: Record<string, number> = {};
     for (const targetId of state.activeIds) totals[targetId] = 0;
     for (const nom of nominations) {
       for (const [toId, pts] of Object.entries(nom.points)) totals[toId] += pts;
     }
-    const provisional = computeNomineesByPoints(Object.fromEntries(Object.entries(totals).filter(([id]) => id !== immuneId)), min);
+    const provisional = computeNomineesByPoints(Object.fromEntries(Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id))), min);
 
     // Líder: salva a uno de los provisionales
     const LEADER_P = 0.22;
     let finalNominees = [...provisional];
 
     if (rand() < LEADER_P && provisional.length > 0) {
-      const leaderId = pickOne(state.activeIds, rand);
+      const leaderId = pickOne(eligibleIds, rand);
       const leaderNom = nominations.find(n => n.fromId === leaderId);
       const leaderGiven = leaderNom?.points ?? {};
 
@@ -290,7 +313,7 @@ export function playNextGala(prev: GameState): GameState {
       finalNominees = provisional.filter(id => id !== savedId);
 
       // rellenar hasta mínimo con siguiente por puntos (+empates)
-      const sorted = Object.entries(totals).filter(([id]) => id !== immuneId).sort((a, b) => b[1] - a[1]);
+      const sorted = Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id)).sort((a, b) => b[1] - a[1]);
       const already = new Set(finalNominees);
       already.add(savedId);
 

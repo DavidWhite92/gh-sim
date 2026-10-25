@@ -1,5 +1,6 @@
 "use client";
 
+import { RepechageResults } from "@/components/RepechageResults";
 import { GalaRecord, GameState } from "@/lib/types";
 
 export function GalaSummary({
@@ -77,6 +78,12 @@ export function GalaSummary({
           </>
         )}
       </div>
+
+      {gala.events.repechage && (
+        <div style={{ marginTop: 14 }}>
+          <RepechageResults state={state} record={gala.events.repechage} />
+        </div>
+      )}
 
       <div className="row" style={{ marginTop: 10 }}>
         {gala.events.immunity && (

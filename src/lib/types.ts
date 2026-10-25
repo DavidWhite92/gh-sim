@@ -7,6 +7,7 @@ export type Gender = "M" | "F" | "X";
  */
 export type Status =
   | "Entra"
+  | "Repesca"
   | "Exento"
   | "Nominado"
   | "Salvado"
@@ -53,7 +54,16 @@ export type PublicVote = {
   kind?: "eviction" | "final";
 };
 
+export type RepechageRecord = {
+  galaNumber: number;
+  evictionNumber: number;
+  candidateIds: string[];
+  percents: Record<string, number>;
+  returnedId: string;
+};
+
 export type GalaEvents = {
+  repechage?: RepechageRecord;
   immunity?: { winnerId: string };
   leader?: { leaderId: string; savedId: string };
 };
@@ -88,6 +98,8 @@ export type HouseRound = {
 };
 
 export type GameState = {
+  repechageAfterEvictions?: number;
+  repechage?: RepechageRecord;
   popularity: Record<string, number>;
   houseRounds: HouseRound[];
   couples: [string, string][];
@@ -110,6 +122,7 @@ export type GameState = {
 
 export const STATUS_COLORS: Record<Status, string> = {
   Entra: "#d66ad2",
+  Repesca: "#d66ad2",
   Exento: "#ffc6d1",
   Nominado: "#ffa800",
   Salvado: "#9ad8ea",

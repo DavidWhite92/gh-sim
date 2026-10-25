@@ -7,7 +7,7 @@ export function PopularityTable({ state }: { state: GameState }) {
     <section className="card">
       <div className="cardPad">
         <h2 style={{ fontSize: 18, margin: 0 }}>Ranking de popularidad</h2>
-        <p className="muted">Evolución tras los eventos de cada gala. Entre paréntesis, el cambio respecto a la gala anterior. Tras salir de la casa, la popularidad queda congelada. Este ranking es independiente del resultado del concurso.</p>
+        <p className="muted">Evolución tras los eventos de cada gala. Entre paréntesis, el cambio respecto a la gala anterior. Mientras estén fuera de la casa, su popularidad queda congelada; si hay repesca, vuelve a evolucionar tras su regreso. Este ranking es independiente del resultado del concurso.</p>
       </div>
       <div className="tableWrap" tabIndex={0} role="region" aria-label="Evolución de popularidad por gala">
         <table className="table popularityTable">

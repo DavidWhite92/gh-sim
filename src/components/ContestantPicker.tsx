@@ -421,8 +421,9 @@ const SEASONS: SeasonDef[] = [
 export function ContestantPicker({
   onStart,
 }: {
-  onStart: (contestants: ContestantSetup[], seed: number) => void;
+  onStart: (contestants: ContestantSetup[], seed: number, options: { repechage: boolean }) => void;
 }) {
+  const [repechageEnabled, setRepechageEnabled] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ContestantSetup[]>([]);
 
@@ -646,7 +647,7 @@ export function ContestantPicker({
 
           <button
             disabled={!canStart}
-            onClick={() => onStart(selected, Date.now())}
+            onClick={() => onStart(selected, Date.now(), { repechage: repechageEnabled })}
             style={{
               padding: "12px 16px",
               borderRadius: 12,
@@ -662,6 +663,18 @@ export function ContestantPicker({
         </div>
       </div>
 
+      <label style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <input
+          type="checkbox"
+          checked={repechageEnabled}
+          onChange={event => setRepechageEnabled(event.target.checked)}
+        />
+        <strong>Activar repesca</strong>
+        <span style={{ fontSize: 13, opacity: 0.8 }}>
+          Un expulsado volverá por votación del público.
+          {selected.length >= 10 && ` Entre la 3.ª y la ${Math.min(8, selected.length - 6)}.ª expulsión.`}
+        </span>
+      </label>
       <div>
         <label htmlFor="contestant-search" style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
           Buscar concursantes en todas las ediciones
