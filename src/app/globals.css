@@ -331,3 +331,68 @@ html[data-theme="light"] .houseEvent{
 .popularityTable td, .popularityTable th{
   padding: 8px;
 }
+/* Menú de participantes: reserva espacio en escritorio y flota en móvil. */
+.participantMenu {
+  position: fixed;
+  top: 108px;
+  bottom: 16px;
+  left: 0;
+  width: 232px;
+  max-width: calc(100vw - 52px);
+  z-index: 10;
+  transform: translateX(-100%);
+  color: var(--text);
+}
+.participantMenu[data-open="true"] { transform: translateX(0); }
+.participantMenuPanel {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: 0 14px 14px 0;
+  background: #151e2d;
+  box-shadow: var(--shadow);
+  padding: 14px 10px;
+}
+.participantMenu h2 { font-size: 16px; margin: 0 0 12px; }
+.participantMenu ul { margin: 0; padding: 0; list-style: none; }
+.participantMenu li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.participantMenuName { min-width: 0; overflow-wrap: anywhere; }
+.participantMenuLabel { flex: 0 0 auto; width: 90px; height: 15px; image-rendering: pixelated; }
+.participantMenuToggle {
+  position: absolute;
+  left: 100%;
+  top: 12px;
+  width: 36px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 0 10px 10px 0;
+  background: #202d40;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 24px;
+  box-shadow: var(--shadow);
+}
+.participantMenuToggle:focus-visible { outline: 2px solid #8bc9ed; outline-offset: 2px; }
+html[data-theme="light"] .participantMenu { color: #111; }
+html[data-theme="light"] .participantMenuPanel,
+html[data-theme="light"] .participantMenuToggle { background: #fff; color: #111; border-color: #ddd; }
+html[data-theme="light"] .participantMenu li { border-color: #e5e7eb; }
+@media (min-width: 901px) {
+  .container:has(.participantMenu[data-open="true"]) {
+    width: min(1920px, calc(100% - 296px));
+    margin-left: max(280px, calc((100% - 1920px) / 2));
+    margin-right: 16px;
+  }
+}
+@media (max-width: 900px) {
+  .participantMenu { bottom: max(16px, env(safe-area-inset-bottom)); }
+}

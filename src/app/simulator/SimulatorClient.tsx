@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { initGame, playNextGala } from "@/lib/sim";
 import { STATUS_COLORS, type GameState } from "@/lib/types";
+import { ParticipantMenu } from "@/components/ParticipantMenu";
 import { HouseEvents } from "@/components/HouseEvents";
 import { PopularityTable } from "@/components/PopularityTable";
 import { RepechageResults } from "@/components/RepechageResults";
@@ -265,8 +266,40 @@ export default function SimulatorClient() {
       ? "Final"
       : (state.gala === 1 ? "Gala 1: Entrada a la casa" : `Gala actual: ${Math.max(1, state.gala - 1)}`));
 
+  // Una única lista de estados visibles para fotos y menú: no muestra resultados futuros.
+  const visibleRoster = alphabeticalContestants
+    .filter(c => !(isWithdrawalHidden && c.id === currentWithdrawal?.replacementId))
+    .map(c => {
+    const isGrey = displayEliminated.has(c.id);
+    const src = getPhotoUrl(c.id);
+    const timeline = state.timeline[c.id] ?? [];
+    // Conserva los nominados de la votación pendiente hasta revelar al expulsado.
+    const pendingEvictionNominee =
+      isEvictionToReveal && evictStep < 5 && (lastVote.nominees.includes(c.id) ||
+        (isWithdrawalHidden && c.id === currentWithdrawal?.departedId && timeline[timeline.length - 2] === "Nominado"));
+    const pendingFinalist =
+      isFinalVoteToReveal && !winnerAnnounced && lastVote.nominees.includes(c.id);
+    const status = !isGrey
+      ? (pendingFinalist ? "Finalista" : showTable ? timeline[timeline.length - 1] : pendingEvictionNominee ? "Nominado" : undefined)
+      : undefined;
+    let labelStatus = status;
+    if (winnerAnnounced && state.finalRanking) {
+      const { winnerId, secondId, thirdId } = state.finalRanking;
+      if (c.id === winnerId) labelStatus = "Ganador";
+      else if (c.id === secondId) labelStatus = "Segundo";
+      else if (c.id === thirdId) labelStatus = "Tercero";
+    }
+    if (isGrey && labelStatus !== "Segundo" && labelStatus !== "Tercero") {
+      labelStatus = state.withdrawals.some(w => w.departedId === c.id) ? "Abandono" : "Expulsado";
+    }
+    return { contestant: c, isGrey, src, status, labelStatus };
+  });
+
   return (
     <>
+      <ParticipantMenu participants={visibleRoster.map(({ contestant, labelStatus }) => ({
+        id: contestant.id, name: contestant.name, gender: contestant.gender, status: labelStatus,
+      }))} />
 
       {/* ROSTER adaptable (fotos de 62x62). Gris solo cuando corresponde */}
       <section className="card cardPad simulatorRoster" style={{ paddingTop: 10, paddingBottom: 10 }}>
@@ -283,19 +316,7 @@ export default function SimulatorClient() {
             paddingBottom: 4,
           }}
         >
-          {alphabeticalContestants.filter(c => !(isWithdrawalHidden && c.id === currentWithdrawal?.replacementId)).map(c => {
-            const isGrey = displayEliminated.has(c.id);
-            const src = getPhotoUrl(c.id);
-            const timeline = state.timeline[c.id] ?? [];
-            // Conserva los nominados de la votación pendiente hasta revelar al expulsado.
-            const pendingEvictionNominee =
-              isEvictionToReveal && evictStep < 5 && (lastVote.nominees.includes(c.id) ||
-                (isWithdrawalHidden && c.id === currentWithdrawal?.departedId && timeline[timeline.length - 2] === "Nominado"));
-            const pendingFinalist =
-              isFinalVoteToReveal && !winnerAnnounced && lastVote.nominees.includes(c.id);
-            const status = !isGrey
-              ? (pendingFinalist ? "Finalista" : showTable ? timeline[timeline.length - 1] : pendingEvictionNominee ? "Nominado" : undefined)
-              : undefined;
+          {visibleRoster.map(({ contestant: c, isGrey, src, status }) => {
             const frameColor = status === "Nominado" || status === "Nominada"
               ? STATUS_COLORS.Nominado
               : status === "Finalista" ? STATUS_COLORS.Finalista : undefined;
