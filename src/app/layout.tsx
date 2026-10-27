@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import ThemeGate from "./ThemeGate";
+
+export const metadata: Metadata = {
+  title: "GH Simulador",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
