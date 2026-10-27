@@ -61,10 +61,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="bg" />
           <div className="appShell">
             <header className="topbar">
-              <Link href="/" className="brand" style={{ color: "inherit", textDecoration: "none" }} aria-label="GH Simulator · Inicio">
+              <Link href="/" className="brand" style={{ color: "inherit", textDecoration: "none" }} aria-label="Simulador GH · Inicio">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/LogoOjoGH.png" alt="GH Simulator" width={128} height={128}
-                  style={{ display: "block", width: 64, height: 64, objectFit: "contain" }} />
+                <img src="/LogoOjoGH.png" alt="" width={128} height={128}
+                  style={{ display: "block", width: 64, height: 64, flexShrink: 0, objectFit: "contain" }} />
+                <span className="brandTitle">Simulador GH</span>
               </Link>
             </header>
 
