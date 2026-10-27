@@ -730,7 +730,11 @@ export function ContestantPicker({
   );
   return (
     <div className="contestantPicker" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14, maxWidth: 980 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 900 }}>Simulador Gran Hermano</h1>
+      <h1 style={{ margin: "12px 0", lineHeight: 0 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/SimuladorGHLogo.gif" alt="Simulador Gran Hermano" width={304} height={90}
+          style={{ display: "block", width: 304, maxWidth: "100%", height: "auto" }} />
+      </h1>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
