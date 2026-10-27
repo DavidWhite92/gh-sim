@@ -359,13 +359,13 @@ html[data-theme="light"] .houseEvent{
 .participantMenu li {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 6px;
   padding: 9px 0;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
-.participantMenuName { min-width: 0; overflow-wrap: anywhere; }
+.participantMenuName { min-width: 0; overflow-wrap: anywhere; font-weight: 700; }
 .participantMenuLabel { flex: 0 0 auto; width: 60px; height: 9px; image-rendering: pixelated; }
 .participantMenuToggle {
   position: absolute;
