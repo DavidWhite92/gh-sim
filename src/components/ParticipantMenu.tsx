@@ -46,7 +46,7 @@ export function ParticipantMenu({ participants }: { participants: Participant[] 
         return <li key={person.id}>
           <span className="participantMenuName">{person.name}</span>
           {label && <img className="participantMenuLabel" src={`/status-labels/${label.file}_gh.gif`}
-            alt={label.text} width={90} height={15} />}
+            alt={label.text} width={60} height={9} />}
         </li>;
       })}</ul>
     </div>

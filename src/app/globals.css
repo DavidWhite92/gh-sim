@@ -366,7 +366,7 @@ html[data-theme="light"] .houseEvent{
   font-size: 13px;
 }
 .participantMenuName { min-width: 0; overflow-wrap: anywhere; }
-.participantMenuLabel { flex: 0 0 auto; width: 90px; height: 15px; image-rendering: pixelated; }
+.participantMenuLabel { flex: 0 0 auto; width: 60px; height: 9px; image-rendering: pixelated; }
 .participantMenuToggle {
   position: absolute;
   left: 100%;
@@ -394,5 +394,6 @@ html[data-theme="light"] .participantMenu li { border-color: #e5e7eb; }
   }
 }
 @media (max-width: 900px) {
+  .participantMenuLabel { width: 90px; height: 15px; }
   .participantMenu { bottom: max(16px, env(safe-area-inset-bottom)); }
 }
