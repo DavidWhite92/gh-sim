@@ -17,7 +17,19 @@ export function SeasonSettings({ options, onChange, reserveCount, participantCou
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
-  const update = (patch: Partial<GameOptions>) => onChange({ ...options, ...patch });
+  const update = (patch: Partial<GameOptions>) => {
+    const next = { ...options, ...patch };
+    if (next.leaderMode === "subtract3" && (next.nominationMode === "gh1" || next.nominationMode === "gh24")) {
+      next.leaderPolicy = "never";
+    }
+    onChange(next);
+  };
+  const selectedLeader = options.leaderMode ?? "save";
+  const selectLeader = (mode: "save" | "subtract3" | "subtract1", policy: PrivilegePolicy) => {
+    if (policy !== "never" || selectedLeader === mode) update({ leaderMode: mode, leaderPolicy: policy });
+  };
+  const leaderValue = (mode: string): PrivilegePolicy => selectedLeader === mode ? options.leaderPolicy ?? "random" : "never";
+  const incompatibleThree = options.nominationMode === "gh1" || options.nominationMode === "gh24";
   const policies: { value: PrivilegePolicy; label: string }[] = [
     { value: "random", label: "Aleatorio" }, { value: "always", label: "Siempre" }, { value: "never", label: "Deshabilitar" },
   ];
@@ -75,10 +87,23 @@ export function SeasonSettings({ options, onChange, reserveCount, participantCou
         {options.finalStretch && participantCount < 14 && <p role="alert">Faltan {14 - participantCount} concursantes para poder empezar con Recta Final.</p>}
       </fieldset>
       <fieldset><legend>Privilegios</legend>
-        <h3>Líder</h3><Choices name="leaderPolicy" value={options.leaderPolicy ?? "random"} options={policies} onChange={value => update({ leaderPolicy: value })} />
-        <h3>Inmune</h3><Choices name="immunityPolicy" value={options.immunityPolicy ?? "random"} options={policies} onChange={value => update({ immunityPolicy: value })} />
-        <p>Nunca hay inmunidad con 5 participantes o menos. Puedes combinar los dos privilegios de forma independiente.</p>
-        <button type="button" className="btn" onClick={() => update({ leaderPolicy: "random", immunityPolicy: "random" })}>Ambos aleatorios</button>
+        <p>Solo puedes elegir una modalidad de líder: salvar, restar 1 o restar 3 puntos. Al activar una se deshabilitan las otras; también puedes deshabilitarlas todas.</p>
+        <h3>Líder</h3>
+        <h4>Salva a alguien de la lista de nominados</h4>
+        <p>Quita un nombre de la lista, manteniendo el mínimo de nominados.</p>
+        <Choices name="leaderSave" value={leaderValue("save")} options={policies} onChange={value => selectLeader("save", value)} />
+        <fieldset disabled={incompatibleThree}><legend>Resta 3 puntos a un nominado</legend>
+          <p>En nominaciones positivas suma 3 puntos. Se recalcula la lista; no garantiza la salvación. No compatible con GH1 ni GH2–GH4.</p>
+          <Choices name="leaderSubtract3" value={leaderValue("subtract3")} options={policies} onChange={value => selectLeader("subtract3", value)} />
+          {incompatibleThree && <p>Deshabilitado por el modo de nominación elegido.</p>}
+        </fieldset>
+        <h4>Resta 1 punto a un nominado</h4>
+        <p>En nominaciones positivas suma 1 punto. Se recalcula la lista; no garantiza la salvación. Compatible con todos los modos.</p>
+        <Choices name="leaderSubtract1" value={leaderValue("subtract1")} options={policies} onChange={value => selectLeader("subtract1", value)} />
+        {options.nominationMode === "random" && selectedLeader === "subtract3" && options.leaderPolicy !== "never" && <p>El modo aleatorio elegirá entre Tradicional y Positivo para ser compatible con Resta 3.</p>}
+        <h3>Inmune</h3>
+        <p>No puede recibir nominaciones en esa gala. Nunca hay inmunidad con 5 participantes o menos. Es independiente del líder.</p>
+        <Choices name="immunityPolicy" value={options.immunityPolicy ?? "random"} options={policies} onChange={value => update({ immunityPolicy: value })} />
       </fieldset>
       <button type="button" className="btn btnPrimary" onClick={() => dialog.current?.close()}>Listo</button>
     </dialog>

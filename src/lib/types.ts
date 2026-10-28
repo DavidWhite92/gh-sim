@@ -74,6 +74,7 @@ export type GameOptions = {
   finalSize?: 3 | 4 | "random";
   nominationMode?: NominationMode | "random";
   leaderPolicy?: PrivilegePolicy;
+  leaderMode?: "save" | "subtract3" | "subtract1";
   immunityPolicy?: PrivilegePolicy;
   repechage?: boolean | "random";
   withdrawals?: boolean;
@@ -93,6 +94,7 @@ export type GalaEvents = {
   repechage?: RepechageRecord;
   immunity?: { winnerId: string };
   leader?: { leaderId: string; savedId: string };
+  leaderSubtract?: { leaderId: string; targetId: string; before: number; after: number };
 };
 
 export type GalaRecord = {
@@ -135,6 +137,7 @@ export type GameState = {
   finalSize: 3 | 4;
   nominationMode: NominationMode;
   leaderPolicy: PrivilegePolicy;
+  leaderMode: "save" | "subtract3" | "subtract1";
   immunityPolicy: PrivilegePolicy;
   withdrawalsEnabled: boolean;
   reserves: Contestant[];

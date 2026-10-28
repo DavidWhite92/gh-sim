@@ -52,7 +52,7 @@ export default function SimulatorClient() {
     if (!setup) return null;
     try {
       const parsed = JSON.parse(decodeURIComponent(setup));
-      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed, { repechage: parsed.repechage === "random" ? "random" : parsed.repechage === true, finalSize: parsed.finalSize, finalStretch: parsed.finalStretch === true, nominationMode: parsed.nominationMode, leaderPolicy: parsed.leaderPolicy, immunityPolicy: parsed.immunityPolicy, withdrawals: parsed.withdrawals === true, reserves: Array.isArray(parsed.reserves) ? parsed.reserves : [] });
+      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed, { repechage: parsed.repechage === "random" ? "random" : parsed.repechage === true, finalSize: parsed.finalSize, finalStretch: parsed.finalStretch === true, nominationMode: parsed.nominationMode, leaderPolicy: parsed.leaderPolicy, leaderMode: parsed.leaderMode, immunityPolicy: parsed.immunityPolicy, withdrawals: parsed.withdrawals === true, reserves: Array.isArray(parsed.reserves) ? parsed.reserves : [] });
     } catch {
       return null;
     }
@@ -238,7 +238,7 @@ export default function SimulatorClient() {
   const hasPublicNomsThisGala = !!lastGala?.finalStretch && lastGala.galaNumber === state.gala - 1;
   const totalNoms = hasNomsThisGala ? lastGala!.nominations.length : 0;
 
-  const hasLeaderThisGala = !!lastGala?.events.leader;
+  const hasLeaderThisGala = !!(lastGala?.events.leader || lastGala?.events.leaderSubtract);
 
   const canShowProvisional = hasLeaderThisGala && revealNomCount >= totalNoms;
   const canShowLeaderSave = hasLeaderThisGala && canShowProvisional; // se muestra tras provisionales (no decimos arriba)
@@ -678,11 +678,11 @@ export default function SimulatorClient() {
                 setShowTable(true);
               }}
             >
-              Revelar a quién salva
+              {lastGala?.events.leaderSubtract ? "Revelar privilegios" : "Revelar a quién salva"}
             </button>
           </div>
           <div className="muted" style={{ marginTop: 8 }}>
-            Tras mostrar la salvación se revelan los nominados definitivos.
+            Tras revelar los privilegios se muestran los nominados definitivos.
           </div>
         </section>
       )}

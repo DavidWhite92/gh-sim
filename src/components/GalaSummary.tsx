@@ -29,7 +29,7 @@ export function GalaSummary({
   readOnly?: boolean;
 }) {
   const idToName = new Map(state.contestants.map(c => [c.id, c.name]));
-  const hasLeader = !!gala.events.leader;
+  const hasLeader = !!(gala.events.leader || gala.events.leaderSubtract);
 
   // Totales parciales según lo revelado
   const partialTotals: Record<string, number> = {};
@@ -39,6 +39,11 @@ export function GalaSummary({
     for (const [toId, pts] of Object.entries(n.points)) {
       partialTotals[toId] = (partialTotals[toId] ?? 0) + pts;
     }
+  }
+
+  if (showLeaderSave && gala.events.leaderSubtract) {
+    const { targetId, after } = gala.events.leaderSubtract;
+    partialTotals[targetId] = after;
   }
 
   const mode = gala.nominationMode ?? galaNominationMode(state, gala.galaNumber);
@@ -92,12 +97,16 @@ export function GalaSummary({
             🛡️ Inmunidad: <b>{idToName.get(gala.events.immunity.winnerId)}</b>
           </span>
         )}
-        {hasLeader && (
+        {gala.events.leader && (
           <span className="badge">
-            👑 Líder: <b>{idToName.get(gala.events.leader!.leaderId)}</b>
+            👑 Líder Salva: <b>{idToName.get(gala.events.leader!.leaderId)}</b>
           </span>
         )}
       </div>
+
+      {gala.events.leaderSubtract && <div className="row" style={{ marginTop: 8 }}>
+        <span className="badge">👑 Líder {gala.events.leaderSubtract.after > gala.events.leaderSubtract.before ? "Suma" : "Resta"} {Math.abs(gala.events.leaderSubtract.after - gala.events.leaderSubtract.before)}: <b>{idToName.get(gala.events.leaderSubtract.leaderId)}</b></span>
+      </div>}
 
       <hr className="soft" />
 
@@ -151,7 +160,7 @@ export function GalaSummary({
           <hr className="soft" />
           <div className="row">
             <div style={{ fontWeight: 900 }}>Nominados provisionales</div>
-            <span className="muted">(antes de la salvación)</span>
+            <span className="muted">(antes de los privilegios)</span>
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             {gala.provisionalNominees.map(id => (
@@ -163,12 +172,21 @@ export function GalaSummary({
         </>
       )}
 
-      {hasLeader && showLeaderSave && (
+      {gala.events.leaderSubtract && showLeaderSave && <>
+        <hr className="soft" />
+        <div className="row"><span className="badge">
+          El líder {gala.events.leaderSubtract.after > gala.events.leaderSubtract.before ? "suma" : "resta"} {Math.abs(gala.events.leaderSubtract.after - gala.events.leaderSubtract.before)} {Math.abs(gala.events.leaderSubtract.after - gala.events.leaderSubtract.before) === 1 ? "punto" : "puntos"} a <b>{idToName.get(gala.events.leaderSubtract.targetId)}</b>
+          {" "}({gala.events.leaderSubtract.before} → {gala.events.leaderSubtract.after}).
+          {gala.finalNominees.includes(gala.events.leaderSubtract.targetId) ? " Sigue en la lista de nominados." : " Queda fuera de la lista de nominados."}
+        </span></div>
+      </>}
+
+      {gala.events.leader && showLeaderSave && (
         <>
           <hr className="soft" />
           <div className="row">
             <span className="badge">
-              El líder salva a <b>{idToName.get(gala.events.leader!.savedId)}</b>
+              El Líder Salva salva a <b>{idToName.get(gala.events.leader!.savedId)}</b>
             </span>
           </div>
         </>

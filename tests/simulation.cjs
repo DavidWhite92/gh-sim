@@ -427,3 +427,43 @@ for(const mode of ['traditional','gh24','gh1','positive','randomPositive','rando
 }
 assert.equal(stretchThresholds[3].size,5);assert.equal(stretchThresholds[4].size,4);assert(saveVotes>0);
 console.log('PASS: final stretch', {stretchSeasons,saveVotes});
+
+let pointLeaderRounds = 0, randomLeaderRounds = 0, randomLeaderSkips = 0;
+for (const mode of ['traditional','gh1','gh24','positive','randomPositive','random'])
+for (const leaderMode of ['save','subtract1','subtract3'])
+for (const leaderPolicy of ['always','never','random']) {
+ const incompatible = leaderMode==='subtract3' && leaderPolicy!=='never' && ['gh1','gh24'].includes(mode);
+ const options = {nominationMode:mode,leaderMode,leaderPolicy,immunityPolicy:'always',repechage:true};
+ const names = Array.from({length:14},(_,i)=>'Leader '+i);
+ if(incompatible){assert.throws(()=>initGame(names,13009,options),/compatible/);continue;}
+ let state=initGame(names,13009,options);
+ if(leaderMode==='subtract3'&&leaderPolicy!=='never')assert(!['gh1','gh24'].includes(state.nominationMode));
+ while(!state.finished){
+  state=playNextGala(state);
+  const gala=state.galas.at(-1);
+  if(!gala||gala.galaNumber!==state.gala-1||!gala.nominations.length||state.finished)continue;
+  const save=gala.events.leader,adjust=gala.events.leaderSubtract;
+  assert(!(save&&adjust),'only one leader privilege');
+  if(leaderPolicy==='always')assert(save||adjust);
+  if(leaderPolicy==='never')assert(!save&&!adjust);
+  if(leaderPolicy==='random')(save||adjust)?randomLeaderRounds++:randomLeaderSkips++;
+  if(leaderMode==='save'){assert(!adjust);continue;}
+  assert(!save);
+  if(!adjust)continue;
+  pointLeaderRounds++;
+  assert(gala.provisionalNominees.includes(adjust.targetId));
+  assert(gala.nominations.some(n=>n.fromId===adjust.leaderId));
+  assert.equal(adjust.before,gala.nominationTotals[adjust.targetId]);
+  const positive=gala.nominationMode==='positive';
+  assert.equal(adjust.after-adjust.before,(positive?1:-1)*(leaderMode==='subtract1'?1:3));
+  const excluded=[gala.events.immunity?.winnerId,gala.events.repechage?.returnedId,gala.events.withdrawal?.replacementId];
+  const totals={...gala.nominationTotals,[adjust.targetId]:adjust.after};
+  const eligible=Object.entries(totals).filter(([id])=>!excluded.includes(id)).sort((a,b)=>positive?a[1]-b[1]:b[1]-a[1]);
+  const min=nominationRules(gala.nominationMode,state.activeIds.length).min;
+  const cutoff=eligible[Math.min(min,eligible.length)-1][1];
+  const expected=eligible.filter(([,p])=>positive?p<=cutoff:p>=cutoff).map(([id])=>id).sort();
+  assert.equal([...gala.finalNominees].sort().join(),expected.join());
+ }
+}
+assert(pointLeaderRounds&&randomLeaderRounds&&randomLeaderSkips);
+console.log('PASS: exclusive leader modes, policies, +/-1 and +/-3, compatibility and nomination recalculation.',{pointLeaderRounds,randomLeaderRounds,randomLeaderSkips});

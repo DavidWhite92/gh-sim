@@ -290,13 +290,38 @@ export function playNextGala(prev: GameState): GameState {
     for (const nom of nominations) {
       for (const [toId, pts] of Object.entries(nom.points)) totals[toId] += pts;
     }
-    const provisional = computeNomineesByPoints(Object.fromEntries(Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id))), min, positive);
+    let provisional = computeNomineesByPoints(Object.fromEntries(Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id))), min, positive);
+
+    const originalProvisional = [...provisional];
+    const originalTotals = { ...totals };
+    // Solo hay una modalidad de líder por temporada; el ajuste puede cambiar los nominados.
+    if (state.leaderMode !== "save" && state.leaderPolicy !== "never" && (state.leaderPolicy === "always" || rand() < 0.22) && provisional.length > 0) {
+      const leaderId = pickOne(eligibleIds, rand);
+      const given = nominations.find(n => n.fromId === leaderId)?.points ?? {};
+      let candidates: string[];
+      if (positive) {
+        const most = Math.max(...provisional.map(id => given[id] ?? 0));
+        candidates = provisional.includes(leaderId) && rand() < 0.7 ? [leaderId]
+          : provisional.filter(id => (given[id] ?? 0) === most);
+      } else if (provisional.includes(leaderId) && rand() < 0.7) {
+        candidates = [leaderId];
+      } else {
+        const least = Math.min(...provisional.map(id => given[id] ?? 0));
+        candidates = provisional.filter(id => (given[id] ?? 0) === least);
+      }
+      const targetId = pickOne(candidates, rand);
+      const before = totals[targetId];
+      const points = state.leaderMode === "subtract1" ? 1 : 3;
+      totals[targetId] += positive ? points : -points;
+      events.leaderSubtract = { leaderId, targetId, before, after: totals[targetId] };
+      provisional = computeNomineesByPoints(Object.fromEntries(Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id))), min, positive);
+    }
 
     // Líder: salva a uno de los provisionales
     const LEADER_P = 0.22;
     let finalNominees = [...provisional];
 
-    if (state.leaderPolicy !== "never" && (state.leaderPolicy === "always" || rand() < LEADER_P) && provisional.length > 0) {
+    if (state.leaderMode === "save" && state.leaderPolicy !== "never" && (state.leaderPolicy === "always" || rand() < LEADER_P) && provisional.length > 0) {
       const leaderId = pickOne(eligibleIds, rand);
       const leaderNom = nominations.find(n => n.fromId === leaderId);
       const leaderGiven = leaderNom?.points ?? {};
@@ -407,8 +432,8 @@ export function playNextGala(prev: GameState): GameState {
       nominationMode,
       galaNumber: state.gala,
       nominations,
-      nominationTotals: totals,
-      provisionalNominees: provisional,
+      nominationTotals: originalTotals,
+      provisionalNominees: originalProvisional,
       finalNominees,
       events,
     };
