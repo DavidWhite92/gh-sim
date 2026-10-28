@@ -96,10 +96,13 @@ export function SeasonSettings({ options, onChange, reserveCount, participantCou
         <div className="row">
           <label><input type="checkbox" name="leaderDisabled" checked={leaderDisabled}
             onChange={event => enableLeader(event.target.checked ? "never" : "always")} /> Deshabilitar</label>
+          <label><input type="checkbox" name="leaderModeRandom" checked={!leaderDisabled && selectedLeader === "random"}
+            onChange={event => update({ leaderMode: event.target.checked ? "random" : "save", leaderPolicy: leaderDisabled ? "always" : leaderPolicy })} /> Modo al azar</label>
           <label><input type="checkbox" name="leaderRandom" checked={leaderPolicy === "random"}
-            onChange={event => enableLeader(event.target.checked ? "random" : "always")} /> Aleatorio</label>
+            onChange={event => enableLeader(event.target.checked ? "random" : "always")} /> Actuar en galas aleatorias</label>
         </div>
-        <p>Elige una sola modalidad. Actuará en cada gala; con Aleatorio marcado, solo en algunas galas. Deshabilitar desactiva el líder por completo.</p>
+        <p>Elige una modalidad o marca Modo al azar para sortearla una sola vez al comenzar la temporada. Actuar en galas aleatorias hace que solo se aplique en algunas galas; sin ese check, actuará siempre. Deshabilitar desactiva el líder por completo.</p>
+        {!leaderDisabled && selectedLeader === "random" && <p>Se sorteará entre Salva, Resta 3 y Resta 1. Con GH1 o GH2–GH4, solo entre Salva y Resta 1.</p>}
         <h4><label><input type="checkbox" name="leaderSave" checked={!leaderDisabled && selectedLeader === "save"}
           onChange={event => selectLeader("save", event.target.checked)} /> Salva a alguien de la lista de nominados</label></h4>
         <p>Quita un nombre de la lista, manteniendo el mínimo de nominados.</p>

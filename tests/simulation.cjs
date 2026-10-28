@@ -467,3 +467,29 @@ for (const leaderPolicy of ['always','never','random']) {
 }
 assert(pointLeaderRounds&&randomLeaderRounds&&randomLeaderSkips);
 console.log('PASS: exclusive leader modes, policies, +/-1 and +/-3, compatibility and nomination recalculation.',{pointLeaderRounds,randomLeaderRounds,randomLeaderSkips});
+
+const {resolveMechanics}=load('mechanics');
+const drawnModes=new Set();let randomActions=0,randomOmissions=0;
+for(const nominationMode of ['traditional','gh1','gh24','positive','randomPositive','random'])
+for(let seed=1;seed<=20;seed++) {
+ const resolvedByPolicy=['always','random','never'].map(leaderPolicy=>resolveMechanics({leaderMode:'random',leaderPolicy,nominationMode},seed));
+ assert(resolvedByPolicy.every(result=>result.leaderMode===resolvedByPolicy[0].leaderMode),'frequency must not affect mode draw');
+ for(const leaderPolicy of ['always','random','never']) {
+  const options={leaderMode:'random',leaderPolicy,nominationMode};
+  let state=initGame(Array.from({length:10},(_,i)=>'Random leader '+i),seed,options);
+  const chosen=state.leaderMode;drawnModes.add(chosen);
+  assert.equal(initGame(Array.from({length:10},(_,i)=>'Random leader '+i),seed,options).leaderMode,chosen);
+  if(['gh1','gh24'].includes(state.nominationMode))assert.notEqual(chosen,'subtract3');
+  while(!state.finished){
+   state=playNextGala(state);assert.equal(state.leaderMode,chosen,'one mode for entire season');
+   const gala=state.galas.at(-1);
+   if(!gala||gala.galaNumber!==state.gala-1||!gala.nominations.length||state.finished)continue;
+   const action=gala.events.leader||gala.events.leaderSubtract;
+   if(leaderPolicy==='always')assert(action);
+   if(leaderPolicy==='never')assert(!action);
+   if(leaderPolicy==='random')action?randomActions++:randomOmissions++;
+  }
+ }
+}
+assert.equal(drawnModes.size,3);assert(randomActions&&randomOmissions);
+console.log('PASS: mode draw independent from gala frequency, fixed for season, all modes reached and GH compatibility respected.');

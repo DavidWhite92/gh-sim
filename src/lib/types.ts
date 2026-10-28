@@ -74,7 +74,7 @@ export type GameOptions = {
   finalSize?: 3 | 4 | "random";
   nominationMode?: NominationMode | "random";
   leaderPolicy?: PrivilegePolicy;
-  leaderMode?: "save" | "subtract3" | "subtract1";
+  leaderMode?: "save" | "subtract3" | "subtract1" | "random";
   immunityPolicy?: PrivilegePolicy;
   repechage?: boolean | "random";
   withdrawals?: boolean;

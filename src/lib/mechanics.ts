@@ -7,7 +7,7 @@ export const NOMINATION_NAMES: Record<NominationMode, string> = {
 
 export function resolveMechanics(options: GameOptions, seed: number) {
   const rand = mulberry32(seed + 450007);
-  const leaderMode = options.leaderMode === "subtract3" || options.leaderMode === "subtract1" ? options.leaderMode : "save";
+  let leaderMode: GameState["leaderMode"] = options.leaderMode === "subtract3" || options.leaderMode === "subtract1" ? options.leaderMode : "save";
   const leaderPolicy = options.leaderPolicy === "always" || options.leaderPolicy === "never" ? options.leaderPolicy : "random";
   const restrictModes = leaderMode === "subtract3" && leaderPolicy !== "never";
   if (restrictModes && (options.nominationMode === "gh1" || options.nominationMode === "gh24")) {
@@ -16,6 +16,12 @@ export function resolveMechanics(options: GameOptions, seed: number) {
   const modes: NominationMode[] = restrictModes ? ["traditional", "positive"] : ["traditional", "gh24", "gh1", "positive"];
   const nominationMode = options.nominationMode === "random" ? pickOne(modes, rand)
     : options.nominationMode === "randomPositive" ? "randomPositive" : modes.includes(options.nominationMode as NominationMode) ? options.nominationMode as NominationMode : "traditional";
+  if (options.leaderMode === "random") {
+    const compatibleLeaders: GameState["leaderMode"][] = nominationMode === "gh1" || nominationMode === "gh24"
+      ? ["save", "subtract1"] : ["save", "subtract3", "subtract1"];
+    // Se sortea una sola vez, sin alterar la frecuencia del privilegio ni los otros sorteos.
+    leaderMode = pickOne(compatibleLeaders, mulberry32(seed + 710023));
+  }
   const finalSize: 3 | 4 = options.finalSize === "random" ? (rand() < 0.5 ? 3 : 4) : options.finalSize === 4 ? 4 : 3;
   const policy = (value?: PrivilegePolicy): PrivilegePolicy => value === "always" || value === "never" ? value : "random";
   return { nominationMode, finalSize, leaderPolicy, leaderMode, immunityPolicy: policy(options.immunityPolicy) };
