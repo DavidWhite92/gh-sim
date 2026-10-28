@@ -1,5 +1,6 @@
 "use client";
 
+import { SeasonSettings } from "@/components/SeasonSettings";
 import { useEffect, useMemo, useState } from "react";
 import type { ContestantSetup, Gender, GameOptions } from "@/lib/types";
 
@@ -524,10 +525,9 @@ export function ContestantPicker({
 }: {
   onStart: (contestants: ContestantSetup[], seed: number, options: GameOptions) => void;
 }) {
-  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(false);
+  const [seasonOptions, setSeasonOptions] = useState<GameOptions>({});
   const [reserves, setReserves] = useState<ContestantSetup[]>([]);
   const [selectionMode, setSelectionMode] = useState<"roster" | "reserves">("roster");
-  const [repechageEnabled, setRepechageEnabled] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ContestantSetup[]>([]);
 
@@ -573,7 +573,7 @@ export function ContestantPicker({
     }
   }, [customList, customHydrated]);
 
-  const canStart = selected.length >= 10 && selected.length <= 25 && (!withdrawalsEnabled || reserves.length > 0);
+  const canStart = selected.length >= (seasonOptions.finalStretch ? 14 : 10) && selected.length <= 25 && (!seasonOptions.withdrawals || reserves.length > 0);
 
   const selectedKeySet = useMemo(() => {
     return new Set(selected.map((c) => `${c.seasonId ?? ""}::${c.name}`));
@@ -733,13 +733,13 @@ export function ContestantPicker({
       <h1 style={{ margin: "12px 0", lineHeight: 0 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/SimuladorGHLogo.gif" alt="Simulador Gran Hermano" width={304} height={90}
-          style={{ display: "block", width: 304, maxWidth: "100%", height: "auto" }} />
+          style={{ display: "block", width: 304, maxWidth: "100%", height: "auto", margin: "0 auto" }} />
       </h1>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ opacity: 0.8 }}>
-            Seleccionados: <b>{selected.length}</b> (mín 10 / máx 25)
+            Seleccionados: <b>{selected.length}</b> (mín {seasonOptions.finalStretch ? 14 : 10} / máx 25)
           </span>
 
           <button
@@ -760,7 +760,7 @@ export function ContestantPicker({
 
           <button
             disabled={!canStart}
-            onClick={() => onStart(selected, Date.now(), { repechage: repechageEnabled, withdrawals: withdrawalsEnabled, reserves })}
+            onClick={() => onStart(selected, Date.now(), { ...seasonOptions, reserves })}
             style={{
               padding: "12px 16px",
               borderRadius: 12,
@@ -776,28 +776,18 @@ export function ContestantPicker({
         </div>
       </div>
 
-      <label style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <input
-          type="checkbox"
-          checked={repechageEnabled}
-          onChange={event => setRepechageEnabled(event.target.checked)}
-        />
-        <strong>Activar repesca</strong>
-        <span style={{ fontSize: 13, opacity: 0.8 }}>
-          Un expulsado volverá por votación del público.
-          {selected.length >= 10 && ` Entre la 3.ª y la ${Math.min(8, selected.length - 6)}.ª expulsión.`}
-        </span>
-      </label>
+      <SeasonSettings options={seasonOptions} onChange={setSeasonOptions} reserveCount={reserves.length} participantCount={selected.length}
+        onChooseReserves={() => {
+          setSelectionMode("reserves");
+          document.getElementById("contestant-library")?.scrollIntoView({ behavior: "smooth" });
+        }} />
+      {seasonOptions.finalStretch && selected.length < 14 && <p role="alert">Recta Final requiere al menos 14 concursantes. Añade {14 - selected.length} más o desactiva esta opción en el engranaje.</p>}
+      {seasonOptions.withdrawals && reserves.length === 0 && <p role="status">Añade al menos un reserva para empezar con abandonos activados.</p>}
       <section style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
-        <label className="row">
-          <input type="checkbox" checked={withdrawalsEnabled} onChange={e => setWithdrawalsEnabled(e.target.checked)} />
-          <strong>Activar abandonos</strong>
-        </label>
-        <p style={{ fontSize: 13, opacity: 0.8 }}>Muy poco frecuentes, hasta 3 por temporada. Cada abandono incorpora un reserva al azar. Elige al menos uno para activar esta opción.</p>
+        <p style={{ fontSize: 13, opacity: 0.8 }}>Para elegir a alguien concreto, ve a Concursantes, selecciona «Elegir reservas» y luego elige a tus elegidos para añadirlos como reservas.</p>
         <div className="row" style={{ marginBottom: 10 }}>
           <strong>Reservas: {reserves.length}/10</strong>
           <button className="btn" onClick={() => pickRandom("reserves")} disabled={reserves.length >= 10}>Random reservas</button>
-          <button className="btn" onClick={() => setSelectionMode("reserves")}>Elegir reservas</button>
         </div>
         <div className="contestantGrid">
           {reserves.map((c, i) => <button
@@ -833,7 +823,7 @@ export function ContestantPicker({
 
       <section style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
-          <strong style={{ fontSize: 16 }}>Roster</strong>
+          <strong style={{ fontSize: 16 }}>Participantes</strong>
           <span style={{ opacity: 0.7, fontSize: 13 }}>(clic en una tarjeta para quitar)</span>
         </div>
 
@@ -895,7 +885,7 @@ export function ContestantPicker({
         )}
       </section>
 
-      <section style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
+      <section id="contestant-library" style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
           <strong style={{ fontSize: 16 }}>Concursantes</strong>
           <button className="btn" aria-pressed={!pickingReserves} onClick={() => setSelectionMode("roster")}>Elegir participantes</button>

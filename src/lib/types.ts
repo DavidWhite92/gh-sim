@@ -10,6 +10,7 @@ export type Status =
   | "Repesca"
   | "Abandono"
   | "Exento"
+  | "NominadoPublico"
   | "Nominado"
   | "Salvado"
   | "Expulsado"
@@ -17,6 +18,7 @@ export type Status =
   | "Ganador"
   | "Segundo"
   | "Tercero"
+  | "Cuarto"
   // Compatibilidad (por si hay estados antiguos en localStorage o similares)
   | "Nominada"
   | "Salvada"
@@ -48,6 +50,7 @@ export type Nomination = {
 };
 
 export type PublicVote = {
+  voteToSave?: boolean;
   galaNumber: number;
   nominees: string[];
   percents: Record<string, number>;
@@ -63,8 +66,16 @@ export type RepechageRecord = {
   returnedId: string;
 };
 
+export type NominationMode = "traditional" | "gh24" | "gh1" | "positive" | "randomPositive";
+export type PrivilegePolicy = "random" | "always" | "never";
+
 export type GameOptions = {
-  repechage?: boolean;
+  finalStretch?: boolean;
+  finalSize?: 3 | 4 | "random";
+  nominationMode?: NominationMode | "random";
+  leaderPolicy?: PrivilegePolicy;
+  immunityPolicy?: PrivilegePolicy;
+  repechage?: boolean | "random";
   withdrawals?: boolean;
   reserves?: ContestantSetup[];
 };
@@ -85,6 +96,8 @@ export type GalaEvents = {
 };
 
 export type GalaRecord = {
+  finalStretch?: boolean;
+  nominationMode?: NominationMode;
   galaNumber: number;
   nominations: Nomination[];
   nominationTotals: Record<string, number>;
@@ -106,6 +119,8 @@ export type HouseEvent = {
 };
 
 export type HouseRound = {
+  finalStretch?: boolean;
+  nominationMode?: NominationMode;
   couples: [string, string][];
   galaNumber: number;
   events: HouseEvent[];
@@ -114,6 +129,13 @@ export type HouseRound = {
 };
 
 export type GameState = {
+  finalStretchAt?: number;
+  finalStretchActive: boolean;
+  pendingVoteToSave: boolean;
+  finalSize: 3 | 4;
+  nominationMode: NominationMode;
+  leaderPolicy: PrivilegePolicy;
+  immunityPolicy: PrivilegePolicy;
   withdrawalsEnabled: boolean;
   reserves: Contestant[];
   withdrawals: WithdrawalRecord[];
@@ -136,7 +158,7 @@ export type GameState = {
   publicVotes: PublicVote[];
 
   finished: boolean;
-  finalRanking?: { winnerId: string; secondId: string; thirdId: string };
+  finalRanking?: { winnerId: string; secondId: string; thirdId: string; fourthId?: string };
 };
 
 export const STATUS_COLORS: Record<Status, string> = {
@@ -145,12 +167,14 @@ export const STATUS_COLORS: Record<Status, string> = {
   Abandono: "#ffa07a",
   Exento: "#ffc6d1",
   Nominado: "#ffa800",
+  NominadoPublico: "#f3f781",
   Salvado: "#9ad8ea",
   Expulsado: "#ff0000",
   Finalista: "#1e88ff",
   Ganador: "#ffd400",
   Segundo: "#c9c9c9",
   Tercero: "#c7772b",
+  Cuarto: "#b6a28a",
 
   // compat
   Nominada: "#ffa800",

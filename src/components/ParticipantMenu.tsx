@@ -23,6 +23,7 @@ export function ParticipantMenu({ participants }: { participants: Participant[] 
     Finalista: { file: "finalista", text: "Finalista" },
     Segundo: { file: "2puesto", text: "Segundo puesto" },
     Tercero: { file: "3puesto", text: "Tercer puesto" },
+    Cuarto: { file: "4puesto", text: "Cuarto puesto" },
     Ganador: { file: "ganador", text: "Ganador" },
   };
 

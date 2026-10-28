@@ -12,7 +12,7 @@ function cellBg(status?: Status) {
 }
 
 function isFinalBold(status?: Status) {
-  return status === "Ganador" || status === "Segundo" || status === "Tercero" || status === "Ganadora" || status === "Segunda" || status === "Tercera";
+  return status === "Ganador" || status === "Segundo" || status === "Tercero" || status === "Cuarto" || status === "Ganadora" || status === "Segunda" || status === "Tercera";
 }
 
 function displayStatus(status: Status, gender: Gender): string {
@@ -31,6 +31,7 @@ function displayStatus(status: Status, gender: Gender): string {
     Ganador: "Ganadora",
     Segundo: "Segunda",
     Tercero: "Tercera",
+    Cuarto: "Cuarta",
   };
 
   const mapM: Record<string, string> = {
@@ -48,6 +49,7 @@ function displayStatus(status: Status, gender: Gender): string {
 
 function cellLabel(status: Status | undefined, gender: Gender) {
   if (!status) return "";
+  if (status === "NominadoPublico") return gender === "F" ? "Nominada" : "Nominado";
   return displayStatus(status, gender);
 }
 
@@ -128,7 +130,7 @@ export function ResultsTable({ state }: { state: GameState }) {
   let orderedIds: string[] = [];
   if ((state as any).finished && (state as any).finalRanking) {
     const fr = (state as any).finalRanking;
-    orderedIds = [fr.winnerId, fr.secondId, fr.thirdId];
+    orderedIds = [fr.winnerId, fr.secondId, fr.thirdId, ...(fr.fourthId ? [fr.fourthId] : [])];
     const rest = state.contestants.map(c => c.id).filter(id => !orderedIds.includes(id));
     const restActive = alphabeticalActiveIds.filter(id => rest.includes(id));
     const restElim = eliminatedRev.filter(id => rest.includes(id));
@@ -176,17 +178,29 @@ export function ResultsTable({ state }: { state: GameState }) {
                 <tr key={id}>
                   <td className="nameCell" style={{ textAlign: "center", border: cellBorder }}>{name}</td>
                   {(() => {
-  // Si alguien fue expulsado, pintamos en gris claro las celdas vacías posteriores
+  // Detecta ausencias antes de entrar y tras cada salida, respetando las repescas.
   let outside = true;
-  const absentColumns = row.map(status => {
+  const absentColumns = Array.from({ length: maxCols }, (_, index) => {
+    const status = row[index];
     if (status && status !== "Expulsado" && status !== "Expulsada" && status !== "Abandono") outside = false;
     const absent = outside && !status;
     if (status === "Expulsado" || status === "Expulsada" || status === "Abandono") outside = true;
     return absent;
   });
-  return colIndices.map((i) => {
-    const st = row[i] as Status | undefined;
-    const afterExpelledEmpty = absentColumns[i];
+  const cells: { index: number; span: number; absent: boolean; status?: Status }[] = [];
+  for (const index of colIndices) {
+    const status = row[index] as Status | undefined;
+    const absent = !!absentColumns[index];
+    const previous = cells[cells.length - 1];
+    // Las columnas visibles son consecutivas aunque se haya ocultado una gala vacía antes de Final.
+    const sameRun = previous && (
+      (absent && previous.absent) ||
+      (status === "NominadoPublico" && previous.status === "NominadoPublico")
+    );
+    if (sameRun) previous.span += 1;
+    else cells.push({ index, span: 1, absent, status });
+  }
+  return cells.map(({ index: i, span, absent: afterExpelledEmpty, status: st }) => {
 
     // Color especial: "Salvado/a" por el líder (no simplemente salvado por no estar nominado)
     const galaNumber = (finished && i === colIndices[colIndices.length - 1]) ? null : (i + 1);
@@ -195,8 +209,9 @@ export function ResultsTable({ state }: { state: GameState }) {
     return (
       <td
         key={i}
+        colSpan={span}
         style={{
-          background: afterExpelledEmpty ? "#d1d5db" : (isLeaderSavedCell ? "#ccff66" : cellBg(st)),
+          background: afterExpelledEmpty ? "#a8aaad" : (isLeaderSavedCell ? "#ccff66" : cellBg(st)),
           border: cellBorder,
         }}
       >
@@ -231,6 +246,11 @@ export function ResultsTable({ state }: { state: GameState }) {
                   return (
                     <td key={i} style={{ textAlign: "center", border: cellBorder }}>
                       <div className="smallList smallListCenter">
+                        {fr.fourthId && <>
+                          <span><b>{idToName.get(fr.fourthId)}</b></span>
+                          <span>{(finalVote.percents?.[fr.fourthId] ?? 0).toFixed(1)}%</span>
+                          <div style={{ height: 6 }} />
+                        </>}
                         <span><b>{idToName.get(third)}</b></span>
                         <span>{(finalVote.percents?.[third] ?? 0).toFixed(1)}%</span>
                         <div style={{ height: 6 }} />
@@ -288,7 +308,7 @@ export function ResultsTable({ state }: { state: GameState }) {
                     name: idToName.get(id) ?? id,
                     pct: vote.percents[id] ?? 0,
                   }))
-                  .sort((a: any, b: any) => b.pct - a.pct);
+                  .sort((a: any, b: any) => vote.voteToSave ? a.pct - b.pct : b.pct - a.pct);
 
                 return (
                   <td key={i} style={{ textAlign: "center", border: cellBorder }}>

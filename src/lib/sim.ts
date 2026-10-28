@@ -1,3 +1,4 @@
+import { resolveMechanics, nominationRules, galaNominationMode } from "./mechanics";
 import { applyWithdrawal, withdrawalChance } from "./withdrawals";
 import { generateHouseRound, audiencePercents, buildNominations } from "./popularity";
 import { GameState, Status, GalaRecord, ContestantInput, ContestantSetup, Gender, GameOptions } from "./types";
@@ -36,13 +37,8 @@ function setStatusForGala(state: GameState, contestantId: string, galaIndex0: nu
   state.timeline[contestantId][galaIndex0] = status;
 }
 
-function getMinNominees(activeCount: number) {
-  if (activeCount === 4) return { points: [2, 1], min: 2 };
-  return { points: [3, 2, 1], min: 3 };
-}
-
-function computeNomineesByPoints(totals: Record<string, number>, minCount: number): string[] {
-  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+function computeNomineesByPoints(totals: Record<string, number>, minCount: number, positive = false): string[] {
+  const sorted = Object.entries(totals).sort((a, b) => positive ? a[1] - b[1] : b[1] - a[1]);
   if (sorted.length === 0) return [];
 
   const picked: string[] = [];
@@ -62,6 +58,7 @@ function computeNomineesByPoints(totals: Record<string, number>, minCount: numbe
 
 export function initGame(inputs: ContestantInput[], seed = Date.now(), options: GameOptions = {}): GameState {
   const normalized = normalizeInputs(inputs);
+  if (options.finalStretch && normalized.length < 14) throw new Error("Recta Final requiere al menos 14 concursantes.");
 
   const contestants = normalized.map((c, idx) => {
     const safe = slugify(c.name);
@@ -88,9 +85,15 @@ export function initGame(inputs: ContestantInput[], seed = Date.now(), options: 
   const timeline: GameState["timeline"] = {};
   for (const c of contestants) timeline[c.id] = [];
 
+  const mechanics = resolveMechanics(options, seed);
+  const hasRepechage = options.repechage === true || (options.repechage === "random" && mulberry32(seed + 812399)() < 0.5);
   const state: GameState = {
-    repechageAfterEvictions: options.repechage && contestants.length >= 9
-      ? 3 + Math.floor(mulberry32(seed + 71891)() * (Math.min(8, contestants.length - 6) - 2))
+    ...mechanics,
+    finalStretchAt: options.finalStretch ? mechanics.finalSize + 1 + Math.floor(mulberry32(seed + 339119)() * (8 - mechanics.finalSize)) : undefined,
+    finalStretchActive: false,
+    pendingVoteToSave: false,
+    repechageAfterEvictions: hasRepechage && contestants.length >= 10
+      ? 4 + Math.floor(mulberry32(seed + 71891)() * (Math.min(8, contestants.length - 6) - 3))
       : undefined,
     withdrawalsEnabled: options.withdrawals === true,
     reserves,
@@ -142,7 +145,7 @@ export function playNextGala(prev: GameState): GameState {
   state.houseRounds.push(houseRound);
 
   // FINAL (si ya estaba lista)
-  if ((state as any).finalReady && state.activeIds.length === 3) {
+  if ((state as any).finalReady && state.activeIds.length === state.finalSize) {
     // Votación final (una sola, la UI revela 3º y ganador)
     const finalPercents = audiencePercents(state.activeIds, state.popularity, rand, true);
     const ranked = Object.entries(finalPercents).sort((a, b) => b[1] - a[1]);
@@ -150,12 +153,13 @@ export function playNextGala(prev: GameState): GameState {
     const winnerId = ranked[0][0];
     const secondId = ranked[1][0];
     const thirdId = ranked[2][0];
+    const fourthId = ranked[3]?.[0];
 
     state.publicVotes.push({
       galaNumber: state.gala,
       nominees: [...state.activeIds],
       percents: finalPercents,
-      expelledId: thirdId,
+      expelledId: fourthId ?? thirdId,
       kind: "final",
     } as any);
 
@@ -167,7 +171,8 @@ export function playNextGala(prev: GameState): GameState {
     setStatusForGala(state, secondId, finalColIndex0, "Segundo");
     setStatusForGala(state, thirdId, finalColIndex0, "Tercero");
 
-    (state as any).finalRanking = { winnerId, secondId, thirdId };
+    if (fourthId) setStatusForGala(state, fourthId, finalColIndex0, "Cuarto");
+    state.finalRanking = { winnerId, secondId, thirdId, ...(fourthId ? { fourthId } : {}) };
     (state as any).finished = true;
     (state as any).finalReady = false;
     return state;
@@ -183,8 +188,9 @@ export function playNextGala(prev: GameState): GameState {
 
   // 1) Expulsión (si hay nominados pendientes)
   if (state.pendingNominees.length > 0) {
-    const percents = audiencePercents(state.pendingNominees, state.popularity, rand);
-    const expelledId = Object.entries(percents).sort((a, b) => b[1] - a[1])[0][0];
+    const voteToSave = state.pendingVoteToSave;
+    const percents = audiencePercents(state.pendingNominees, state.popularity, rand, voteToSave);
+    const expelledId = Object.entries(percents).sort((a, b) => voteToSave ? a[1] - b[1] : b[1] - a[1])[0][0];
 
     state.publicVotes.push({
       galaNumber: state.gala,
@@ -192,6 +198,7 @@ export function playNextGala(prev: GameState): GameState {
       percents,
       expelledId,
       kind: "eviction",
+      voteToSave,
     } as any);
 
     (state as any).lastEvictionGala = state.gala;
@@ -201,17 +208,18 @@ export function playNextGala(prev: GameState): GameState {
 
     setStatusForGala(state, expelledId, galaIndex0, "Expulsado");
     state.pendingNominees = [];
+    state.pendingVoteToSave = false;
 
     if (withdrawalPhase === "after") applyWithdrawal(state, "after", withdrawalRand, expelledId);
 
     // Una sola repesca, después de la expulsión y antes de las nominaciones.
     if (!state.repechage && state.repechageAfterEvictions === state.publicVotes.filter(v => v.kind === "eviction").length && state.activeIds.length >= 6) {
-      const candidateIds = state.eliminatedIds.filter(id => !state.withdrawals.some(w => w.departedId === id));
+      const candidateIds = state.eliminatedIds.filter(id => id !== expelledId && !state.withdrawals.some(w => w.departedId === id));
       const returnPercents = audiencePercents(candidateIds, state.popularity, rand, true);
       const returnedId = [...candidateIds].sort((a, b) => returnPercents[b] - returnPercents[a])[0];
       state.repechage = {
         galaNumber: state.gala,
-        evictionNumber: candidateIds.length,
+        evictionNumber: state.publicVotes.filter(v => v.kind === "eviction").length,
         candidateIds,
         percents: returnPercents,
         returnedId,
@@ -222,7 +230,7 @@ export function playNextGala(prev: GameState): GameState {
     }
 
     // Si tras expulsión quedan 3: esta gala SOLO expulsa y declara finalistas.
-    if (state.activeIds.length === 3) {
+    if (state.activeIds.length === state.finalSize) {
       for (const id of state.activeIds) setStatusForGala(state, id, galaIndex0, "Finalista");
       (state as any).finalReady = true;
       (state as any).finalists = [...state.activeIds];
@@ -237,8 +245,9 @@ export function playNextGala(prev: GameState): GameState {
   }
 
   // 2) Nominaciones (si quedan >=4)
-  if (state.activeIds.length >= 4) {
-    const { points: scheme, min } = getMinNominees(state.activeIds.length);
+  if (state.activeIds.length > state.finalSize) {
+    const nominationMode = galaNominationMode(state);
+    const { points: scheme, min } = nominationRules(nominationMode, state.activeIds.length);
 
     const returning = state.repechage?.galaNumber === state.gala ? state.repechage : undefined;
     const withdrawal = state.withdrawals.find(w => w.galaNumber === state.gala);
@@ -249,11 +258,27 @@ export function playNextGala(prev: GameState): GameState {
     const eligibleIds = state.activeIds.filter(id => !excludedIds.includes(id));
     const events: GalaRecord["events"] = { ...(returning ? { repechage: returning } : {}), ...(withdrawal ? { withdrawal } : {}) };
 
+    if (state.finalStretchActive || (state.finalStretchAt !== undefined && state.activeIds.length <= state.finalStretchAt)) {
+      state.finalStretchActive = true;
+      houseRound.finalStretch = true;
+      // Se mantienen las exenciones de llegada durante esa gala.
+      for (const id of eligibleIds) setStatusForGala(state, id, galaIndex0, "NominadoPublico");
+      state.pendingNominees = [...eligibleIds];
+      state.pendingVoteToSave = true;
+      state.galas.push({
+        galaNumber: state.gala, finalStretch: true, nominations: [], nominationTotals: {},
+        provisionalNominees: [], finalNominees: [...eligibleIds], events,
+      });
+      state.gala += 1;
+      return state;
+    }
+
     // Inmunidad aleatoria
     // Regla: no puede haber inmunidad cuando solo quedan 4 concursantes.
     const IMMUNITY_P = 0.22;
+    const positive = nominationMode === "positive";
     let immuneId: string | undefined;
-    if (eligibleIds.length > 4 && rand() < IMMUNITY_P) {
+    if (state.activeIds.length > 5 && eligibleIds.length >= scheme.length + 2 && state.immunityPolicy !== "never" && (state.immunityPolicy === "always" || rand() < IMMUNITY_P)) {
       immuneId = pickOne(eligibleIds, rand);
       events.immunity = { winnerId: immuneId };
       setStatusForGala(state, immuneId, galaIndex0, "Exento");
@@ -265,13 +290,13 @@ export function playNextGala(prev: GameState): GameState {
     for (const nom of nominations) {
       for (const [toId, pts] of Object.entries(nom.points)) totals[toId] += pts;
     }
-    const provisional = computeNomineesByPoints(Object.fromEntries(Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id))), min);
+    const provisional = computeNomineesByPoints(Object.fromEntries(Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id))), min, positive);
 
     // Líder: salva a uno de los provisionales
     const LEADER_P = 0.22;
     let finalNominees = [...provisional];
 
-    if (rand() < LEADER_P && provisional.length > 0) {
+    if (state.leaderPolicy !== "never" && (state.leaderPolicy === "always" || rand() < LEADER_P) && provisional.length > 0) {
       const leaderId = pickOne(eligibleIds, rand);
       const leaderNom = nominations.find(n => n.fromId === leaderId);
       const leaderGiven = leaderNom?.points ?? {};
@@ -296,7 +321,12 @@ export function playNextGala(prev: GameState): GameState {
       let savedId: string;
 
       // Prioriza auto-salvarse si está nominado con riesgo alto
-      if (leaderIsProvisional) {
+      if (positive) {
+        // En positivo se salva a quien se apoya más, o a sí mismo si está en riesgo.
+        const mostSupported = Math.max(...provisional.map(id => leaderGiven[id] ?? 0));
+        savedId = leaderIsProvisional && rand() < 0.7 ? leaderId
+          : pickOne(provisional.filter(id => (leaderGiven[id] ?? 0) === mostSupported), rand);
+      } else if (leaderIsProvisional) {
         const pSelf = leaderHighRisk ? 0.9 : leaderMedRisk ? 0.7 : 0.55;
         if (rand() < pSelf) {
           savedId = leaderId;
@@ -346,7 +376,7 @@ export function playNextGala(prev: GameState): GameState {
       finalNominees = provisional.filter(id => id !== savedId);
 
       // rellenar hasta mínimo con siguiente por puntos (+empates)
-      const sorted = Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id)).sort((a, b) => b[1] - a[1]);
+      const sorted = Object.entries(totals).filter(([id]) => id !== immuneId && !excludedIds.includes(id)).sort((a, b) => positive ? a[1] - b[1] : b[1] - a[1]);
       const already = new Set(finalNominees);
       already.add(savedId);
 
@@ -374,6 +404,7 @@ export function playNextGala(prev: GameState): GameState {
     }
 
     const galaRecord: GalaRecord = {
+      nominationMode,
       galaNumber: state.gala,
       nominations,
       nominationTotals: totals,

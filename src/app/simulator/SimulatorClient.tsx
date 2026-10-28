@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { initGame, playNextGala } from "@/lib/sim";
 import { STATUS_COLORS, type GameState } from "@/lib/types";
+import { ContestantPortrait } from "@/components/ContestantPortrait";
 import { ParticipantMenu } from "@/components/ParticipantMenu";
 import { HouseEvents } from "@/components/HouseEvents";
 import { PopularityTable } from "@/components/PopularityTable";
@@ -51,7 +52,7 @@ export default function SimulatorClient() {
     if (!setup) return null;
     try {
       const parsed = JSON.parse(decodeURIComponent(setup));
-      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed, { repechage: parsed.repechage === true, withdrawals: parsed.withdrawals === true, reserves: Array.isArray(parsed.reserves) ? parsed.reserves : [] });
+      return initGame((parsed.contestants ?? parsed.names) as any, parsed.seed, { repechage: parsed.repechage === "random" ? "random" : parsed.repechage === true, finalSize: parsed.finalSize, finalStretch: parsed.finalStretch === true, nominationMode: parsed.nominationMode, leaderPolicy: parsed.leaderPolicy, immunityPolicy: parsed.immunityPolicy, withdrawals: parsed.withdrawals === true, reserves: Array.isArray(parsed.reserves) ? parsed.reserves : [] });
     } catch {
       return null;
     }
@@ -73,7 +74,7 @@ export default function SimulatorClient() {
   const [evictStep, setEvictStep] = useState(0); // 0..5 text, 5 name, 6 done
   const [evictDoneForGala, setEvictDoneForGala] = useState<number | null>(null);
 // Final reveal (3º y ganador)
-  const [finalPhase, setFinalPhase] = useState<"third" | "winner" | "done">("third");
+  const [finalPhase, setFinalPhase] = useState<"fourth" | "third" | "winner" | "done">("third");
   const [finalStep, setFinalStep] = useState(0); // 0..5 lines, 5 name, 6 done for phase
   const [finalDoneForGala, setFinalDoneForGala] = useState<number | null>(null);
 
@@ -189,14 +190,16 @@ export default function SimulatorClient() {
 
     // La final conserva a los tres en color hasta anunciar al ganador.
     if (vote.kind === "final" && state.finalRanking) {
-      const { winnerId, secondId, thirdId } = state.finalRanking;
+      const { winnerId, secondId, thirdId, fourthId } = state.finalRanking;
       set.delete(winnerId);
       if (winnerAnnounced) {
         set.add(secondId);
         set.add(thirdId);
+        if (fourthId) set.add(fourthId);
       } else {
         set.delete(secondId);
         set.delete(thirdId);
+        if (fourthId) set.delete(fourthId);
       }
     }
     // El regreso calculado por el motor no se muestra hasta anunciar su nombre.
@@ -222,7 +225,7 @@ export default function SimulatorClient() {
     setShowDefinitives(false);
     setShowLeaderSave(false);
     setShowTable(false);
-    setFinalPhase("third");
+    setFinalPhase(state.finalSize === 4 ? "fourth" : "third");
     setFinalStep(0);
     setFinalDoneForGala(null);
 
@@ -232,6 +235,7 @@ export default function SimulatorClient() {
 
   // Control de revelado de nominaciones
   const hasNomsThisGala = !!lastGala && lastGala.galaNumber === (state.gala - 1) && lastGala.nominations.length > 0;
+  const hasPublicNomsThisGala = !!lastGala?.finalStretch && lastGala.galaNumber === state.gala - 1;
   const totalNoms = hasNomsThisGala ? lastGala!.nominations.length : 0;
 
   const hasLeaderThisGala = !!lastGala?.events.leader;
@@ -255,14 +259,14 @@ export default function SimulatorClient() {
     (
       (isFinalReady && !isEvictionToReveal && !isFinalVoteToReveal) ||
       (hasNomsThisGala && canShowDefinitives && showTable) ||
-      (!hasNomsThisGala && !isEvictionToReveal && !isFinalReady)
+      (!hasNomsThisGala && (!hasPublicNomsThisGala || showTable) && !isEvictionToReveal && !isFinalReady)
     );
 
   // state.gala representa la *siguiente* gala a celebrar (puntero interno).
   // Para el usuario mostramos la última gala "en curso" (state.gala - 1).
   const topTitle = isFinalFinished && winnerAnnounced
     ? "Concurso finalizado"
-    : (isFinalReady || isFinalVoteToReveal
+    : ((isFinalReady && !isEvictionToReveal && eventsSeen) || isFinalVoteToReveal
       ? "Final"
       : (state.gala === 1 ? "Gala 1: Entrada a la casa" : `Gala actual: ${Math.max(1, state.gala - 1)}`));
 
@@ -276,20 +280,21 @@ export default function SimulatorClient() {
     // Conserva los nominados de la votación pendiente hasta revelar al expulsado.
     const pendingEvictionNominee =
       isEvictionToReveal && evictStep < 5 && (lastVote.nominees.includes(c.id) ||
-        (isWithdrawalHidden && c.id === currentWithdrawal?.departedId && timeline[timeline.length - 2] === "Nominado"));
+        (isWithdrawalHidden && c.id === currentWithdrawal?.departedId && ["Nominado", "NominadoPublico"].includes(timeline[timeline.length - 2])));
     const pendingFinalist =
       isFinalVoteToReveal && !winnerAnnounced && lastVote.nominees.includes(c.id);
     const status = !isGrey
-      ? (pendingFinalist ? "Finalista" : showTable ? timeline[timeline.length - 1] : pendingEvictionNominee ? "Nominado" : undefined)
+      ? (pendingFinalist ? "Finalista" : showTable ? timeline[timeline.length - 1] : pendingEvictionNominee ? (lastVote.voteToSave ? "NominadoPublico" : "Nominado") : undefined)
       : undefined;
-    let labelStatus = status;
+    let labelStatus = status === "NominadoPublico" ? "Nominado" : status;
     if (winnerAnnounced && state.finalRanking) {
-      const { winnerId, secondId, thirdId } = state.finalRanking;
+      const { winnerId, secondId, thirdId, fourthId } = state.finalRanking;
       if (c.id === winnerId) labelStatus = "Ganador";
       else if (c.id === secondId) labelStatus = "Segundo";
       else if (c.id === thirdId) labelStatus = "Tercero";
+      else if (c.id === fourthId) labelStatus = "Cuarto";
     }
-    if (isGrey && labelStatus !== "Segundo" && labelStatus !== "Tercero") {
+    if (isGrey && labelStatus !== "Segundo" && labelStatus !== "Tercero" && labelStatus !== "Cuarto") {
       labelStatus = state.withdrawals.some(w => w.departedId === c.id) ? "Abandono" : "Expulsado";
     }
     return { contestant: c, isGrey, src, status, labelStatus };
@@ -304,8 +309,7 @@ export default function SimulatorClient() {
       {/* ROSTER adaptable (fotos de 62x62). Gris solo cuando corresponde */}
       <section className="card cardPad simulatorRoster" style={{ paddingTop: 10, paddingBottom: 10 }}>
         <div className="row" style={{ alignItems: "baseline" }}>
-          <div style={{ fontWeight: 900 }}>Roster</div>
-          <div className="muted" style={{ marginLeft: 10 }}>Fotos arriba (gris si expulsado)</div>
+          <div style={{ fontWeight: 900 }}>Participantes</div>
         </div>
         <div
           style={{
@@ -319,7 +323,7 @@ export default function SimulatorClient() {
           {visibleRoster.map(({ contestant: c, isGrey, src, status }) => {
             const frameColor = status === "Nominado" || status === "Nominada"
               ? STATUS_COLORS.Nominado
-              : status === "Finalista" ? STATUS_COLORS.Finalista : undefined;
+              : status === "NominadoPublico" ? STATUS_COLORS.NominadoPublico : status === "Finalista" ? STATUS_COLORS.Finalista : undefined;
             return (
               <div key={c.id} style={{ width: 62, flex: "0 0 auto" }}>
                 <div
@@ -334,7 +338,7 @@ export default function SimulatorClient() {
                     filter: isGrey ? "grayscale(1)" : "none",
                     opacity: isGrey ? 0.7 : 1,
                   }}
-                  title={frameColor ? `${c.name} · ${status}` : c.name}
+                  title={frameColor ? `${c.name} · ${status === "NominadoPublico" ? "Nominado" : status}` : c.name}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -398,7 +402,10 @@ export default function SimulatorClient() {
         {(() => {
           const galaToShow = state.galas.find(g => g.galaNumber === reviewGalaNumber);
           if (!galaToShow) return null;
+          const houseRound = state.houseRounds.find(round => round.galaNumber === reviewGalaNumber);
           return (
+            <>
+            {houseRound && <HouseEvents state={state} round={houseRound} />}
             <GalaSummary
               state={state}
               gala={galaToShow}
@@ -410,6 +417,7 @@ export default function SimulatorClient() {
               showTable={true}
               readOnly
             />
+            </>
           );
         })()}
       </div>
@@ -419,7 +427,6 @@ export default function SimulatorClient() {
       <section className="card cardPad">
         <div className="row">
           <div style={{ fontWeight: 900 }}>{topTitle}</div>
-          <span className="badge">Activos: <b>{state.activeIds.length - (isReturnHidden ? 1 : 0)}</b></span>
 
           <div className="spacer" />
 
@@ -436,7 +443,6 @@ export default function SimulatorClient() {
             <hr className="soft" />
             <div className="row">
               <div style={{ fontWeight: 900 }}>Entran en la casa</div>
-              <span className="muted">Las nominaciones empiezan en la Gala 2</span>
             </div>
             <div className="row" style={{ marginTop: 8 }}>
               {state.contestants.map(c => (
@@ -452,7 +458,7 @@ export default function SimulatorClient() {
             <hr className="soft" />
             <div className="row">
               <div style={{ fontWeight: 900 }}>Nominados (pasan a votación)</div>
-              <span className="muted">Se expulsa en la próxima gala</span>
+              <span className="muted">{hasPublicNomsThisGala ? "El público vota para salvar; sale quien recibe menos apoyo" : "Se expulsa en la próxima gala"}</span>
             </div>
             <div className="row" style={{ marginTop: 8 }}>
               {state.pendingNominees.map(id => (
@@ -504,6 +510,8 @@ export default function SimulatorClient() {
               : (idToName.get(lastVote.expelledId) ?? "EXPULSADO")}
           </div>
 
+          {evictStep >= 5 && <ContestantPortrait contestant={idToContestant.get(lastVote.expelledId)} />}
+
           <div className="row" style={{ justifyContent: "center", marginTop: 14 }}>
             <button
               className="btn btnPrimary"
@@ -528,9 +536,10 @@ export default function SimulatorClient() {
         <section className="card cardPad" style={{ textAlign: "center" }}>
           <div className="muted" style={{ fontSize: 14, marginBottom: 6 }}>{fullSentence()}</div>
           <div style={{ fontWeight: 900, fontSize: 22 }}>{idToName.get(lastVote.expelledId)}</div>
+          <ContestantPortrait contestant={idToContestant.get(lastVote.expelledId)} />
 
           {/* Si esta expulsión deja 3, mostramos finalistas */}
-          {isFinalReady && !isWithdrawalPending && finalists?.length === 3 && (
+          {isFinalReady && !isWithdrawalPending && finalists?.length === state.finalSize && (
             <>
               <hr className="soft" />
               <div style={{ fontWeight: 900, marginBottom: 8 }}>Finalistas</div>
@@ -549,13 +558,14 @@ export default function SimulatorClient() {
       {eventsSeen && isFinalVoteToReveal && (
         <section className="card cardPad" style={{ textAlign: "center" }}>
           {(() => {
-            const thirdId = lastVote.expelledId as string;
+            const thirdId = state.finalRanking!.thirdId;
+            const fourthId = state.finalRanking?.fourthId;
             const winnerId = (lastVote.nominees as string[])
               .slice()
               .sort((a: string, b: string) => (lastVote.percents[b] ?? 0) - (lastVote.percents[a] ?? 0))[0];
 
-            const lines = finalPhase === "third" ? FINAL_THIRD_LINES : FINAL_WIN_LINES;
-            const nameToShow = finalPhase === "third" ? thirdId : winnerId;
+            const lines = finalPhase === "fourth" ? FINAL_THIRD_LINES.map(line => line.replace("TERCER", "CUARTO")) : finalPhase === "third" ? FINAL_THIRD_LINES : FINAL_WIN_LINES;
+            const nameToShow = finalPhase === "fourth" ? fourthId! : finalPhase === "third" ? thirdId : winnerId;
 
             return (
               <>
@@ -569,7 +579,10 @@ export default function SimulatorClient() {
                     onClick={() => {
                       if (finalStep < 5) setFinalStep(s => s + 1);
                       else {
-                        if (finalPhase === "third") {
+                        if (finalPhase === "fourth") {
+                          setFinalPhase("third");
+                          setFinalStep(0);
+                        } else if (finalPhase === "third") {
                           setFinalPhase("winner");
                           setFinalStep(0);
                         } else {
@@ -580,7 +593,7 @@ export default function SimulatorClient() {
                       }
                     }}
                   >
-                    {finalStep < 5 ? "Siguiente" : (finalPhase === "third" ? "Continuar" : "Ver resultado")}
+                    {finalStep < 5 ? "Siguiente" : (finalPhase === "fourth" || finalPhase === "third" ? "Continuar" : "Ver resultado")}
                   </button>
                 </div>
               </>
@@ -600,7 +613,7 @@ export default function SimulatorClient() {
                 .sort((a: string, b: string) => (lastVote.percents[b] ?? 0) - (lastVote.percents[a] ?? 0));
               return ranked.map((id: string, i: number) => (
                 <span key={id} className="badge">
-                  {i === 0 ? "🏆" : i === 1 ? "🥈" : "🥉"} <b>{idToName.get(id)}</b>
+                  {i === 0 ? "🏆" : i === 1 ? "🥈" : i === 2 ? "🥉" : "4.º"} <b>{idToName.get(id)}</b>
                 </span>
               ));
             })()}
@@ -624,6 +637,15 @@ export default function SimulatorClient() {
               </button>
             </>
           )}
+        </section>
+      )}
+
+      {eventsSeen && !isWithdrawalPending && !isRepechagePending && hasPublicNomsThisGala && !isEvictionToReveal && !isFinalVoteToReveal && (
+        <section className="card cardPad">
+          <h2 style={{ marginTop: 0 }}>Recta Final</h2>
+          <p>Se acabaron las nominaciones entre compañeros. El público vota para salvar y la persona con menor porcentaje saldrá en la próxima gala. La popularidad sigue influyendo en el apoyo del público.</p>
+          <div className="row">{lastGala!.finalNominees.map(id => <span className="badge" key={id}>{idToName.get(id)}</span>)}</div>
+          {!showTable && <button className="btn btnPrimary" style={{ marginTop: 14 }} onClick={() => { setShowDefinitives(true); setShowTable(true); }}>Abrir votación para salvar</button>}
         </section>
       )}
 

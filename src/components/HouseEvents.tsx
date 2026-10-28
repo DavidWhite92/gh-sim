@@ -1,6 +1,8 @@
+import { galaNominationMode } from "@/lib/mechanics";
 import type { GameState, HouseRound } from "@/lib/types";
 
 export function HouseEvents({ state, round, onContinue }: { state: GameState; round: HouseRound; onContinue?: () => void }) {
+  const positiveVoting = (round.nominationMode ?? galaNominationMode(state, round.galaNumber)) === "positive";
   const names = new Map(state.contestants.map(c => [c.id, c.name]));
   return (
     <section className="card cardPad">
@@ -14,11 +16,14 @@ export function HouseEvents({ state, round, onContinue }: { state: GameState; ro
             <strong>{event.positive ? "↑" : "↓"} {event.title}</strong>
             <div style={{ marginTop: 6, fontWeight: 700 }}>{event.participantIds.map(id => names.get(id)).join(" · ")}</div>
             <p style={{ margin: "6px 0 10px", lineHeight: 1.5 }}>{event.description}</p>
-            {event.conflict && <p className="muted" style={{ marginBottom: 0 }}>Esta discusión aumenta la probabilidad de que se nominen entre sí, salvo que les proteja una conexión, pareja o pacto.</p>}
-            {event.effect === "pact" && <p className="muted">Pacto de esta gala: comparten objetivos siempre que haya suficientes. Si faltan nombres, completan los votos y reservan los puntos más bajos para sus vínculos.</p>}
-            {(event.effect === "connection" || event.effect === "romance") && <p className="muted">Se evitarán en esta gala. Solo se nominarán si faltan opciones, con los puntos más bajos posibles.</p>}
-            {event.effect === "couple" && <p className="muted">Pareja: se evitarán mientras sigan juntos. Si es imprescindible completar la nominación, se darán los puntos más bajos posibles.</p>}
-            {event.effect === "breakup" && <p className="muted">La protección de pareja termina: pueden volver a nominarse.</p>}
+            {!round.finalStretch && positiveVoting && event.conflict && <p className="muted">Esta discusión reduce la prioridad de apoyarse en las nominaciones positivas.</p>}
+            {!round.finalStretch && positiveVoting && event.effect && event.effect !== "breakup" && <p className="muted">Este vínculo favorece que se apoyen con los puntos más altos en las nominaciones positivas.</p>}
+            {!round.finalStretch && positiveVoting && event.effect === "breakup" && <p className="muted">Tras la ruptura dejan de priorizarse como pareja en las nominaciones positivas.</p>}
+            {!round.finalStretch && !positiveVoting && event.conflict && <p className="muted" style={{ marginBottom: 0 }}>Esta discusión aumenta la probabilidad de que se nominen entre sí, salvo que les proteja una conexión, pareja o pacto.</p>}
+            {!round.finalStretch && !positiveVoting && event.effect === "pact" && <p className="muted">Pacto de esta gala: comparten objetivos siempre que haya suficientes. Si faltan nombres, completan los votos y reservan los puntos más bajos para sus vínculos.</p>}
+            {!round.finalStretch && !positiveVoting && (event.effect === "connection" || event.effect === "romance") && <p className="muted">Se evitarán en esta gala. Solo se nominarán si faltan opciones, con los puntos más bajos posibles.</p>}
+            {!round.finalStretch && !positiveVoting && event.effect === "couple" && <p className="muted">Pareja: se evitarán mientras sigan juntos. Si es imprescindible completar la nominación, se darán los puntos más bajos posibles.</p>}
+            {!round.finalStretch && !positiveVoting && event.effect === "breakup" && <p className="muted">La protección de pareja termina: pueden volver a nominarse.</p>}
           </article>
         ))}
       </div>

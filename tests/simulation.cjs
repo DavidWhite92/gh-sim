@@ -140,7 +140,7 @@ for(let size=10;size<=25;size++) {
   for(let seed=1;seed<=25;seed++) {
     let state=initGame(Array.from({length:size},(_,i)=>'Return '+i),seed,{repechage:true});
     const scheduled=state.repechageAfterEvictions;
-    assert(scheduled>=3&&scheduled<=Math.min(8,size-6));
+    assert(scheduled>=4&&scheduled<=Math.min(8,size-6));
     observed.add(scheduled);
     let returned,returnGala,returnRecord;
     while(!state.finished) {
@@ -156,7 +156,10 @@ for(let size=10;size<=25;size++) {
         returnRecord=JSON.stringify(state.repechage);
         const gala=state.galas.at(-1);
         assert.equal(state.repechage.evictionNumber,scheduled);
-        assert.equal(state.repechage.candidateIds.length,scheduled);
+        assert.equal(state.repechage.candidateIds.length,scheduled-1);
+        assert(state.repechage.candidateIds.length>=3);
+        assert(state.repechage.candidateIds.every(id=>previous.eliminatedIds.includes(id)));
+        assert(!state.repechage.candidateIds.includes(state.publicVotes.at(-1).expelledId));
         assert(state.activeIds.length>=7,'returns no later than six residents remain before return');
         assert(state.activeIds.includes(returned));
         assert(!state.eliminatedIds.includes(returned));
@@ -186,8 +189,9 @@ for(let size=10;size<=25;size++) {
 }
 assert.equal(comebacks,400);
 assert(secondExits>0);
-assert(windows.get(10).has(3)&&windows.get(10).has(4));
-assert(windows.get(11).has(3)&&windows.get(11).has(5));
+assert.equal(windows.get(10).size,1);
+assert(windows.get(10).has(4));
+assert(windows.get(11).has(4)&&windows.get(11).has(5));
 let disabled=initGame(Array.from({length:10},(_,i)=>'Disabled '+i),7);
 while(!disabled.finished){disabled=playNextGala(disabled);assert(!disabled.repechage);}
 console.log('PASS: '+comebacks+' enabled seasons (10–25 contestants), disabled option, timing windows, voting exemption, next-gala eligibility and '+secondExits+' subsequent evictions.');
@@ -292,3 +296,134 @@ generateHouseRound(expectedState,eventRand);
 const expectedVote=audiencePercents(current.pendingNominees,expectedState.popularity,eventRand);
 assert.equal(JSON.stringify(playNextGala(current).publicVotes.at(-1).percents),JSON.stringify(expectedVote));
 console.log('PASS: arrival exemption, no withdrawals at five or fewer, departed nominee removed, same-gala popularity used.');
+
+// Custom season mechanics across every nomination/final/privilege combination.
+const {nominationRules}=load('mechanics');
+let customSeasons=0;
+const randomModes=new Set(),randomFinals=new Set(),randomRepechages=new Set();
+for(const mode of ['traditional','gh24','gh1','positive'])for(const finalSize of [3,4])
+for(const leaderPolicy of ['random','always','never'])for(const immunityPolicy of ['random','always','never'])
+for(let seed=1;seed<=8;seed++) {
+  let state=initGame(Array.from({length:10+seed%4},(_,i)=>'Player '+i),seed,{nominationMode:mode,finalSize,leaderPolicy,immunityPolicy,repechage:true,withdrawals:true,reserves});
+  let steps=0;
+  while(!state.finished){
+    const prev=state;state=playNextGala(state);assert(++steps<30);
+    assert.equal(state.finalSize,finalSize);assert.equal(state.nominationMode,mode);
+    const gala=state.galas.at(-1);
+    if(gala?.galaNumber===state.gala-1&&gala.nominations.length&&!state.finished){
+      const rules=nominationRules(mode,state.activeIds.length);
+      const eligible=state.activeIds.filter(id=>id!==gala.events.repechage?.returnedId&&id!==gala.events.withdrawal?.replacementId);
+      assert.equal(gala.nominations.length,eligible.length);
+      assert.equal(!!gala.events.leader,leaderPolicy==='always'||(leaderPolicy==='random'&&!!gala.events.leader));
+      if(state.activeIds.length<=5||immunityPolicy==='never')assert(!gala.events.immunity);
+      if(state.activeIds.length>5&&immunityPolicy==='always')assert(gala.events.immunity);
+      const targets=eligible.filter(id=>id!==gala.events.immunity?.winnerId);
+      for(const ballot of gala.nominations){
+        assert.equal(Object.values(ballot.points).sort().join(),[...rules.points].sort().join());
+        assert(Object.keys(ballot.points).every(id=>targets.includes(id)&&id!==ballot.fromId));
+      }
+      assert(gala.finalNominees.length>=rules.min);
+      const ordered=targets.map(id=>[id,gala.nominationTotals[id]]).sort((a,b)=>mode==='positive'?a[1]-b[1]:b[1]-a[1]);
+      const cutoff=ordered[rules.min-1][1];
+      const expected=ordered.filter(([,pts])=>mode==='positive'?pts<=cutoff:pts>=cutoff).map(([id])=>id).sort();
+      assert.equal([...gala.provisionalNominees].sort().join(),expected.join());
+      if(gala.events.leader)assert(!gala.finalNominees.includes(gala.events.leader.savedId));
+      if(state.activeIds.length===finalSize+1)assert.equal(rules.points.length,mode==='gh1'||(mode==='traditional'&&finalSize===3)?2:3);
+    }
+    if(state.finalReady){assert.equal(state.activeIds.length,finalSize);assert(state.activeIds.every(id=>state.timeline[id].at(-1)==='Finalista'));}
+    if(state.withdrawals.length>prev.withdrawals.length&&state.withdrawals.at(-1).phase==='before'&&prev.pendingNominees.length===2)
+      assert(!prev.pendingNominees.includes(state.withdrawals.at(-1).departedId));
+  }
+  assert.equal(state.publicVotes.at(-1).nominees.length,finalSize);
+  assert.equal(!!state.finalRanking.fourthId,finalSize===4);
+  if(finalSize===4)assert.equal(state.timeline[state.finalRanking.fourthId].at(-1),'Cuarto');
+  customSeasons++;
+}
+for(let seed=1;seed<=50;seed++){
+ const options={nominationMode:'random',finalSize:'random',repechage:'random'};
+ const inputs=Array.from({length:10},(_,i)=>'Random '+i);
+ const state=initGame(inputs,seed,options);
+ assert.equal(JSON.stringify(state),JSON.stringify(initGame(inputs,seed,options)));
+ randomModes.add(state.nominationMode);randomFinals.add(state.finalSize);randomRepechages.add(!!state.repechageAfterEvictions);
+}
+assert.equal(randomModes.size,4);assert.equal(randomFinals.size,2);assert.equal(randomRepechages.size,2);
+// Positive votes always give higher available scores to allies than to non-allies.
+const friendly=initGame(['A','B','C','D','E','F'],1,{nominationMode:'positive'});
+friendly.couples=[[friendly.activeIds[0],friendly.activeIds[1]]];
+const positiveBallots=buildNominations(friendly,[3,2,1],undefined,[],mulberry32(1));
+assert.equal(positiveBallots.find(n=>n.fromId===friendly.activeIds[0]).points[friendly.activeIds[1]],3);
+// A duel is protected even when the random departure draw picks its first resident.
+const duel=initGame(['A','B','C','D','E','F'],1,{withdrawals:true,reserves});
+duel.pendingNominees=duel.activeIds.slice(0,2);
+const duelIds=[...duel.pendingNominees];applyWithdrawal(duel,'before',()=>0);
+assert(!duelIds.includes(duel.withdrawals[0].departedId));assert.equal(duel.pendingNominees.length,2);
+console.log('PASS:',customSeasons,'custom seasons; random choices fixed; positive affinity; protected duels; four-person finals.');
+
+// Occasional positive galas: the season setting stays fixed, the gala direction is recorded.
+const {galaNominationMode}=load('mechanics');
+let occasionalPositive=0,occasionalTraditional=0,positiveLastFour=0,negativeLastFour=0;
+for(let seed=1;seed<=100;seed++){
+ let state=initGame(Array.from({length:10},(_,i)=>'Mixed '+i),seed,{nominationMode:'randomPositive',leaderPolicy:seed%2?'always':'never',immunityPolicy:'always',repechage:true,withdrawals:true,reserves});
+ while(!state.finished){
+  const prev=state;state=playNextGala(state);
+  assert.equal(state.nominationMode,'randomPositive');
+  const gala=state.galas.at(-1);
+  if(!gala||gala.galaNumber!==state.gala-1||!gala.nominations.length||state.finished)continue;
+  const mode=gala.nominationMode;
+  assert.equal(mode,galaNominationMode(state,gala.galaNumber));
+  assert.equal(mode,state.houseRounds.at(-1).nominationMode);
+  const positive=mode==='positive';positive?occasionalPositive++:occasionalTraditional++;
+  if(state.activeIds.length===4)positive?positiveLastFour++:negativeLastFour++;
+  const rules=nominationRules(mode,state.activeIds.length);
+  for(const ballot of gala.nominations)assert.equal(Object.values(ballot.points).sort().join(),[...rules.points].sort().join());
+  const eligible=Object.entries(gala.nominationTotals).filter(([id])=>id!==gala.events.immunity?.winnerId&&id!==gala.events.repechage?.returnedId&&id!==gala.events.withdrawal?.replacementId);
+  eligible.sort((a,b)=>positive?a[1]-b[1]:b[1]-a[1]);
+  const cut=eligible[rules.min-1][1];
+  const expected=eligible.filter(([,v])=>positive?v<=cut:v>=cut).map(([id])=>id).sort();
+  assert.equal([...gala.provisionalNominees].sort().join(),expected.join());
+  assert.equal(JSON.stringify(playNextGala(prev)),JSON.stringify(state));
+  assert(gala.finalNominees.length>=rules.min);
+ }
+ for(const gala of state.galas)if(gala.nominations.length)assert.equal(gala.nominationMode,galaNominationMode(state,gala.galaNumber));
+}
+assert(occasionalPositive>0&&occasionalTraditional>occasionalPositive);
+assert(positiveLastFour>0&&negativeLastFour>0);
+assert(occasionalPositive/(occasionalPositive+occasionalTraditional)>0.10&&occasionalPositive/(occasionalPositive+occasionalTraditional)<0.20);
+console.log('PASS: random positive gala histories and ballots',{occasionalPositive,occasionalTraditional,positiveLastFour,negativeLastFour});
+
+// Final stretch is independent of nomination mode and ends exactly at the configured final.
+const stretchThresholds={3:new Set(),4:new Set()};
+let stretchSeasons=0,saveVotes=0;
+assert.throws(()=>initGame(Array.from({length:13},(_,i)=>'P'+i),1,{finalStretch:true}),/14/);
+for(const mode of ['traditional','gh24','gh1','positive','randomPositive','random'])for(const finalSize of [3,4])for(let seed=1;seed<=30;seed++){
+ let state=initGame(Array.from({length:14+seed%4},(_,i)=>'Stretch '+i),seed,{finalStretch:true,finalSize,nominationMode:mode,leaderPolicy:'always',immunityPolicy:'always',repechage:seed%2===0,withdrawals:true,reserves});
+ assert(state.finalStretchAt>=finalSize+1&&state.finalStretchAt<=8);
+ stretchThresholds[finalSize].add(state.finalStretchAt);
+ let started=false,turns=0;
+ while(!state.finished){
+  const prev=state;state=playNextGala(state);assert(++turns<30);
+  if(prev.finalStretchActive)assert(state.finalStretchActive);
+  const round=state.houseRounds.at(-1),gala=state.galas.find(g=>g.galaNumber===round.galaNumber);
+  if(gala?.finalStretch){
+   if(!started)assert(state.activeIds.length<=state.finalStretchAt);
+   started=true;
+   assert.equal(gala.nominations.length,0);assert(!gala.events.leader&&!gala.events.immunity);
+   assert(state.pendingVoteToSave);assert(round.finalStretch);
+   const expected=state.activeIds.filter(id=>id!==gala.events.withdrawal?.replacementId&&id!==gala.events.repechage?.returnedId);
+   assert.equal([...gala.finalNominees].sort().join(),[...expected].sort().join());
+   assert(expected.every(id=>state.timeline[id][gala.galaNumber-1]==='NominadoPublico'));
+  }
+  const vote=state.publicVotes.at(-1);
+  if(vote?.galaNumber===round.galaNumber&&vote.kind==='eviction'){
+   assert.equal(!!vote.voteToSave,prev.pendingVoteToSave);
+   if(vote.voteToSave){
+    saveVotes++;
+    assert.equal(vote.percents[vote.expelledId],Math.min(...Object.values(vote.percents)));
+    assert(Math.abs(Object.values(vote.percents).reduce((a,b)=>a+b,0)-100)<1e-8);
+   }
+  }
+ }
+ assert(started);assert.equal(state.activeIds.length,finalSize);stretchSeasons++;
+}
+assert.equal(stretchThresholds[3].size,5);assert.equal(stretchThresholds[4].size,4);assert(saveVotes>0);
+console.log('PASS: final stretch', {stretchSeasons,saveVotes});

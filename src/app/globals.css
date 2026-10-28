@@ -397,3 +397,27 @@ html[data-theme="light"] .participantMenu li { border-color: #e5e7eb; }
   .participantMenuLabel { width: 90px; height: 15px; }
   .participantMenu { bottom: max(16px, env(safe-area-inset-bottom)); }
 }
+
+.seasonSettingsToggle {
+  position: fixed; right: 16px; bottom: 76px; z-index: 99997;
+  width: 50px; height: 50px; display: grid; place-items: center;
+  border: 1px solid var(--picker-border); border-radius: 50%;
+  background: var(--picker-card); color: var(--picker-text); box-shadow: var(--shadow); cursor: pointer;
+}
+.seasonSettings {
+  width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh - 32px);
+  margin: auto 16px auto auto; padding: 20px; overflow-y: auto;
+  border: 1px solid var(--picker-border); border-radius: 18px;
+  background: var(--picker-surface); color: var(--picker-text); box-shadow: var(--shadow);
+}
+.seasonSettings::backdrop { background: rgb(0 0 0 / .5); }
+.seasonSettings > .row { justify-content: space-between; }
+.seasonSettings h2 { font-size: 20px; margin: 0; }
+.seasonSettings h3 { font-size: 15px; margin: 10px 0; }
+.seasonSettings fieldset { margin: 16px 0; border: 1px solid var(--picker-border); border-radius: 12px; padding: 14px; min-width: 0; }
+.seasonSettings legend { font-weight: 800; padding: 0 6px; }
+.seasonSettings p { font-size: 13px; line-height: 1.5; }
+.seasonChoices { display: grid; gap: 10px; }
+.seasonChoices label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.seasonSettings input { flex-shrink: 0; }
+@media (max-width: 600px) { .seasonSettings { margin: auto; padding: 16px; } }

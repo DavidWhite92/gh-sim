@@ -1,3 +1,4 @@
+import { galaNominationMode } from "./mechanics";
 import type { GameState, HouseEvent, HouseRound } from "./types";
 import { shuffle } from "./rng";
 
@@ -52,7 +53,7 @@ export function generateHouseRound(state: GameState, rand: () => number): HouseR
     events.push({ title: template.title, description: template.description, participantIds, changes,
       positive: template.impact[0] > 0, conflict: !!template.conflict, effect: template.effect });
   }
-  return { galaNumber: state.gala, events, popularity: { ...state.popularity },
+  return { finalStretch: state.finalStretchActive, nominationMode: galaNominationMode(state), galaNumber: state.gala, events, popularity: { ...state.popularity },
     activeIds: [...state.activeIds], couples: state.couples.map(pair => [...pair] as [string, string]) };
 }
 
@@ -67,6 +68,19 @@ export function protectedPairs(state: GameState, events: HouseEvent[]): string[]
 export function buildNominations(state: GameState, scheme: number[], immuneId: string | undefined, events: HouseEvent[], rand: () => number, excludedIds: string[] = []) {
   const activeIds = state.activeIds.filter(id => !excludedIds.includes(id));
   const groups = protectedPairs(state, events);
+  if (galaNominationMode(state) === "positive") {
+    return shuffle(activeIds, rand).map(fromId => {
+      const eligible = activeIds.filter(id => id !== fromId && id !== immuneId);
+      const friends = eligible.filter(id => groups.some(group => group.includes(fromId) && group.includes(id)));
+      const rivals = new Set(events.filter(e => e.conflict && e.participantIds.includes(fromId)).flatMap(e => e.participantIds));
+      const others = eligible.filter(id => !friends.includes(id));
+      // Afinidad primero, neutrales después y conflictos al final. Los puntos mayores van primero.
+      const targets = [...shuffle(friends, rand), ...shuffle(others.filter(id => !rivals.has(id)), rand),
+        ...shuffle(others.filter(id => rivals.has(id)), rand)].slice(0, scheme.length);
+      if (targets.length !== scheme.length) throw new Error("No hay suficientes objetivos para votar en positivo.");
+      return { fromId, points: Object.fromEntries(targets.map((id, i) => [id, scheme[i]])) };
+    });
+  }
   const eligibleFor = (fromId: string) => activeIds.filter(id =>
     id !== fromId && id !== immuneId && !groups.some(group => group.includes(fromId) && group.includes(id)));
   const pactTargets = new Map<string, string[]>();

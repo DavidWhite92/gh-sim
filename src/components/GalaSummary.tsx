@@ -2,6 +2,7 @@
 import { WithdrawalNotice } from "@/components/WithdrawalNotice";
 
 import { RepechageResults } from "@/components/RepechageResults";
+import { NOMINATION_NAMES, nominationRules, galaNominationMode } from "@/lib/mechanics";
 import { GalaRecord, GameState } from "@/lib/types";
 
 export function GalaSummary({
@@ -32,7 +33,7 @@ export function GalaSummary({
 
   // Totales parciales según lo revelado
   const partialTotals: Record<string, number> = {};
-  for (const id of state.activeIds) partialTotals[id] = 0;
+  for (const id of Object.keys(gala.nominationTotals)) partialTotals[id] = 0;
   for (let i = 0; i < Math.min(revealCount, gala.nominations.length); i++) {
     const n = gala.nominations[i];
     for (const [toId, pts] of Object.entries(n.points)) {
@@ -40,25 +41,21 @@ export function GalaSummary({
     }
   }
 
-  // provisionales dinámicos por puntos (solo visual), incluyendo empates en el corte
-  const sorted = Object.entries(partialTotals).sort((a, b) => b[1] - a[1]);
-  const min = state.activeIds.length === 4 ? 2 : 3;
+  const mode = gala.nominationMode ?? galaNominationMode(state, gala.galaNumber);
+  const positive = mode === "positive";
+  const sorted = Object.entries(partialTotals).sort((a, b) => positive ? a[1] - b[1] : b[1] - a[1]);
+  const rules = nominationRules(mode, Object.keys(gala.nominationTotals).length);
+  const provisionalSet = new Set(hasLeader && showProvisional ? gala.provisionalNominees : []);
 
-  let provisionalDynamic: string[] = [];
-  if (sorted.length > 0) {
-    if (sorted.length < min) {
-      provisionalDynamic = sorted.map(x => x[0]);
-    } else {
-      const cutoff = sorted[min - 1][1];
-      // si el corte es 0 (aún no hay votos suficientes), evitamos marcar a todos
-      if (cutoff <= 0) {
-        provisionalDynamic = sorted.slice(0, min).map(x => x[0]);
-      } else {
-        provisionalDynamic = sorted.filter(([, pts]) => pts >= cutoff).map(x => x[0]);
-      }
-    }
-  }
-  const provisionalSet = new Set(provisionalDynamic);
+  if (gala.finalStretch) return (
+    <section className="card cardPad">
+      <h3>Gala {gala.galaNumber} · Recta Final</h3>
+      <p>Ya no hay nominaciones entre compañeros. El público vota para salvar: la persona con menor porcentaje será expulsada.</p>
+      {gala.events.withdrawal && <WithdrawalNotice state={state} record={gala.events.withdrawal} />}
+      {gala.events.repechage && <RepechageResults state={state} record={gala.events.repechage} />}
+      <div className="row">{gala.finalNominees.map(id => <span className="badge" key={id}>{idToName.get(id)}</span>)}</div>
+    </section>
+  );
 
   return (
     <section className="card cardPad">
@@ -110,7 +107,8 @@ export function GalaSummary({
         </div>
 
         <div className="muted" style={{ fontSize: 12 }}>
-          Siempre se nomina a 3 personas (2 en la última nominación). Si faltan opciones, los vínculos reciben los puntos más bajos posibles.
+          {NOMINATION_NAMES[mode]}: se dan {rules.points.join(", ")} puntos a {rules.points.length} personas.
+          {positive ? " Se apoya primero a los vínculos; quedan nominados quienes reciben menos puntos." : " Si faltan opciones, los vínculos reciben los puntos más bajos posibles."}
         </div>
         {gala.nominations.slice(0, revealCount).map(n => {
           const entries = Object.entries(n.points).sort((a, b) => b[1] - a[1]);
