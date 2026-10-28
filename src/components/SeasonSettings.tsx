@@ -25,11 +25,16 @@ export function SeasonSettings({ options, onChange, reserveCount, participantCou
     onChange(next);
   };
   const selectedLeader = options.leaderMode ?? "save";
-  const selectLeader = (mode: "save" | "subtract3" | "subtract1", policy: PrivilegePolicy) => {
-    if (policy !== "never" || selectedLeader === mode) update({ leaderMode: mode, leaderPolicy: policy });
-  };
-  const leaderValue = (mode: string): PrivilegePolicy => selectedLeader === mode ? options.leaderPolicy ?? "random" : "never";
+  const leaderPolicy = options.leaderPolicy ?? "random";
+  const leaderDisabled = leaderPolicy === "never";
   const incompatibleThree = options.nominationMode === "gh1" || options.nominationMode === "gh24";
+  const selectLeader = (mode: "save" | "subtract3" | "subtract1", checked: boolean) => {
+    update({ leaderMode: mode, leaderPolicy: checked ? (leaderPolicy === "random" ? "random" : "always") : "never" });
+  };
+  const enableLeader = (policy: PrivilegePolicy) => update({
+    leaderMode: selectedLeader === "subtract3" && incompatibleThree ? "save" : selectedLeader,
+    leaderPolicy: policy,
+  });
   const policies: { value: PrivilegePolicy; label: string }[] = [
     { value: "random", label: "Aleatorio" }, { value: "always", label: "Siempre" }, { value: "never", label: "Deshabilitar" },
   ];
@@ -87,19 +92,24 @@ export function SeasonSettings({ options, onChange, reserveCount, participantCou
         {options.finalStretch && participantCount < 14 && <p role="alert">Faltan {14 - participantCount} concursantes para poder empezar con Recta Final.</p>}
       </fieldset>
       <fieldset><legend>Privilegios</legend>
-        <p>Solo puedes elegir una modalidad de líder: salvar, restar 1 o restar 3 puntos. Al activar una se deshabilitan las otras; también puedes deshabilitarlas todas.</p>
         <h3>Líder</h3>
-        <h4>Salva a alguien de la lista de nominados</h4>
+        <div className="row">
+          <label><input type="checkbox" name="leaderDisabled" checked={leaderDisabled}
+            onChange={event => enableLeader(event.target.checked ? "never" : "always")} /> Deshabilitar</label>
+          <label><input type="checkbox" name="leaderRandom" checked={leaderPolicy === "random"}
+            onChange={event => enableLeader(event.target.checked ? "random" : "always")} /> Aleatorio</label>
+        </div>
+        <p>Elige una sola modalidad. Actuará en cada gala; con Aleatorio marcado, solo en algunas galas. Deshabilitar desactiva el líder por completo.</p>
+        <h4><label><input type="checkbox" name="leaderSave" checked={!leaderDisabled && selectedLeader === "save"}
+          onChange={event => selectLeader("save", event.target.checked)} /> Salva a alguien de la lista de nominados</label></h4>
         <p>Quita un nombre de la lista, manteniendo el mínimo de nominados.</p>
-        <Choices name="leaderSave" value={leaderValue("save")} options={policies} onChange={value => selectLeader("save", value)} />
-        <fieldset disabled={incompatibleThree}><legend>Resta 3 puntos a un nominado</legend>
-          <p>En nominaciones positivas suma 3 puntos. Se recalcula la lista; no garantiza la salvación. No compatible con GH1 ni GH2–GH4.</p>
-          <Choices name="leaderSubtract3" value={leaderValue("subtract3")} options={policies} onChange={value => selectLeader("subtract3", value)} />
-          {incompatibleThree && <p>Deshabilitado por el modo de nominación elegido.</p>}
-        </fieldset>
-        <h4>Resta 1 punto a un nominado</h4>
+        <h4><label><input type="checkbox" name="leaderSubtract3" disabled={incompatibleThree} checked={!leaderDisabled && selectedLeader === "subtract3"}
+          onChange={event => selectLeader("subtract3", event.target.checked)} /> Resta 3 puntos a un nominado</label></h4>
+        <p>En nominaciones positivas suma 3 puntos. Se recalcula la lista; no garantiza la salvación. No compatible con GH1 ni GH2–GH4.</p>
+        {incompatibleThree && <p>Resta 3 está deshabilitado por el modo de nominación elegido.</p>}
+        <h4><label><input type="checkbox" name="leaderSubtract1" checked={!leaderDisabled && selectedLeader === "subtract1"}
+          onChange={event => selectLeader("subtract1", event.target.checked)} /> Resta 1 punto a un nominado</label></h4>
         <p>En nominaciones positivas suma 1 punto. Se recalcula la lista; no garantiza la salvación. Compatible con todos los modos.</p>
-        <Choices name="leaderSubtract1" value={leaderValue("subtract1")} options={policies} onChange={value => selectLeader("subtract1", value)} />
         {options.nominationMode === "random" && selectedLeader === "subtract3" && options.leaderPolicy !== "never" && <p>El modo aleatorio elegirá entre Tradicional y Positivo para ser compatible con Resta 3.</p>}
         <h3>Inmune</h3>
         <p>No puede recibir nominaciones en esa gala. Nunca hay inmunidad con 5 participantes o menos. Es independiente del líder.</p>

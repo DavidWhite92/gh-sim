@@ -510,7 +510,7 @@ export default function SimulatorClient() {
               : (idToName.get(lastVote.expelledId) ?? "EXPULSADO")}
           </div>
 
-          {evictStep >= 5 && <ContestantPortrait contestant={idToContestant.get(lastVote.expelledId)} />}
+          {evictStep >= 5 && <ContestantPortrait contestant={idToContestant.get(lastVote.expelledId)} size={62} />}
 
           <div className="row" style={{ justifyContent: "center", marginTop: 14 }}>
             <button
@@ -536,7 +536,7 @@ export default function SimulatorClient() {
         <section className="card cardPad" style={{ textAlign: "center" }}>
           <div className="muted" style={{ fontSize: 14, marginBottom: 6 }}>{fullSentence()}</div>
           <div style={{ fontWeight: 900, fontSize: 22 }}>{idToName.get(lastVote.expelledId)}</div>
-          <ContestantPortrait contestant={idToContestant.get(lastVote.expelledId)} />
+          <ContestantPortrait contestant={idToContestant.get(lastVote.expelledId)} size={62} />
 
           {/* Si esta expulsión deja 3, mostramos finalistas */}
           {isFinalReady && !isWithdrawalPending && finalists?.length === state.finalSize && (
