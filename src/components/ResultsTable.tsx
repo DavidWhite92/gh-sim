@@ -112,10 +112,13 @@ export function ResultsTable({ state }: { state: GameState }) {
   const idToName = new Map(state.contestants.map(c => [c.id, c.name]));
   const idToGender = new Map(state.contestants.map(c => [c.id, (c as any).gender as Gender]));
 
-  // Mapa galaNumber -> savedId cuando el líder salva a alguien
+  // Salvación directa o por un ajuste de puntos que saca al concursante de la lista.
   const leaderSavedByGala = new Map<number, string>();
   for (const gr of (state.galas ?? [])) {
-    const savedId = (gr as any)?.events?.leader?.savedId as string | undefined;
+    const adjustment = gr.events.leaderSubtract;
+    const savedByPoints = adjustment && gr.provisionalNominees.includes(adjustment.targetId)
+      && !gr.finalNominees.includes(adjustment.targetId) ? adjustment.targetId : undefined;
+    const savedId = gr.events.leader?.savedId ?? savedByPoints;
     if (savedId) leaderSavedByGala.set(gr.galaNumber, savedId);
   }
 

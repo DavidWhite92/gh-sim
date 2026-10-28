@@ -3,7 +3,7 @@ import { WithdrawalNotice } from "@/components/WithdrawalNotice";
 
 import { RepechageResults } from "@/components/RepechageResults";
 import { NOMINATION_NAMES, nominationRules, galaNominationMode } from "@/lib/mechanics";
-import { GalaRecord, GameState } from "@/lib/types";
+import { GalaRecord, GameState, STATUS_COLORS } from "@/lib/types";
 
 export function GalaSummary({
   state,
@@ -39,11 +39,6 @@ export function GalaSummary({
     for (const [toId, pts] of Object.entries(n.points)) {
       partialTotals[toId] = (partialTotals[toId] ?? 0) + pts;
     }
-  }
-
-  if (showLeaderSave && gala.events.leaderSubtract) {
-    const { targetId, after } = gala.events.leaderSubtract;
-    partialTotals[targetId] = after;
   }
 
   const mode = gala.nominationMode ?? galaNominationMode(state, gala.galaNumber);
@@ -146,8 +141,9 @@ export function GalaSummary({
             key={id}
             className="badge"
             style={{
-              borderColor: provisionalSet.has(id) ? "rgba(255,80,80,.55)" : undefined,
-              background: provisionalSet.has(id) ? "rgba(255,80,80,.10)" : undefined,
+              borderColor: provisionalSet.has(id) ? STATUS_COLORS.Nominado : undefined,
+              background: provisionalSet.has(id) ? STATUS_COLORS.Nominado : undefined,
+              color: provisionalSet.has(id) ? "#111" : undefined,
             }}
           >
             <b>{idToName.get(id)}</b> {pts}
@@ -164,7 +160,7 @@ export function GalaSummary({
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             {gala.provisionalNominees.map(id => (
-              <span key={id} className="badge" style={{ borderColor: "rgba(255,80,80,.55)", background: "rgba(255,80,80,.10)" }}>
+              <span key={id} className="badge" style={{ borderColor: STATUS_COLORS.Nominado, background: STATUS_COLORS.Nominado, color: "#111" }}>
                 🔸 <b>{idToName.get(id)}</b>
               </span>
             ))}
