@@ -1,4 +1,5 @@
 "use client";
+import { ContestantPortrait } from "@/components/ContestantPortrait";
 import { WithdrawalNotice } from "@/components/WithdrawalNotice";
 
 import { RepechageResults } from "@/components/RepechageResults";
@@ -57,10 +58,18 @@ export function GalaSummary({
     ? eligibleTotals.filter(([, points]) => positive ? points <= cutoff : points >= cutoff).map(([id]) => id)
     : []);
 
+  const eviction = readOnly ? state.publicVotes.find(vote => vote.galaNumber === gala.galaNumber && (vote.kind ?? "eviction") === "eviction") : undefined;
+  const evictionSummary = eviction && <div style={{ marginTop: 14 }}>
+    <h3>Expulsión: {idToName.get(eviction.expelledId)}</h3>
+    <ContestantPortrait contestant={state.contestants.find(c => c.id === eviction.expelledId)} size={62} align="left" />
+    <p>{(eviction.percents[eviction.expelledId] ?? 0).toFixed(1)} % de los votos {eviction.voteToSave ? "para salvar" : "para expulsar"}.</p>
+  </div>;
+
   if (gala.finalStretch) return (
     <section className="card cardPad">
       <h3>Gala {gala.galaNumber} · Recta Final</h3>
       <p>Ya no hay nominaciones entre compañeros. El público vota para salvar: la persona con menor porcentaje será expulsada.</p>
+      {evictionSummary}
       {gala.events.withdrawal && <WithdrawalNotice state={state} record={gala.events.withdrawal} />}
       {gala.events.repechage && <RepechageResults state={state} record={gala.events.repechage} />}
       <div className="row">{gala.finalNominees.map(id => <span className="badge" key={id}>{idToName.get(id)}</span>)}</div>
@@ -87,6 +96,7 @@ export function GalaSummary({
         )}
       </div>
 
+      {evictionSummary}
       {gala.events.withdrawal && (
         <div style={{ marginTop: 14 }}><WithdrawalNotice state={state} record={gala.events.withdrawal} /></div>
       )}

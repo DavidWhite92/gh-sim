@@ -533,10 +533,10 @@ export default function SimulatorClient() {
 
       {/* Tras revelar expulsión, mostramos la frase completa + nombre */}
       {lastVote && (lastVote.kind ?? "eviction") === "eviction" && evictDoneForGala === lastVote.galaNumber && (
-        <section className="card cardPad" style={{ textAlign: "center" }}>
+        <section className="card cardPad" style={{ textAlign: "left" }}>
           <div className="muted" style={{ fontSize: 14, marginBottom: 6 }}>{fullSentence()}</div>
           <div style={{ fontWeight: 900, fontSize: 22 }}>{idToName.get(lastVote.expelledId)}</div>
-          <ContestantPortrait contestant={idToContestant.get(lastVote.expelledId)} size={62} />
+          <ContestantPortrait contestant={idToContestant.get(lastVote.expelledId)} size={62} align="left" />
 
           {/* Si esta expulsión deja 3, mostramos finalistas */}
           {isFinalReady && !isWithdrawalPending && finalists?.length === state.finalSize && (

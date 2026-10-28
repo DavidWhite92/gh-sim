@@ -25,7 +25,7 @@ export function PopularityTable({ state }: { state: GameState }) {
                 if (round.galaNumber < entryGala) return <td key={round.galaNumber} title="Todavía no había entrado">—</td>;
                 const value = round.popularity[c.id] ?? 50;
                 const previous = i === 0 ? 50 : state.houseRounds[i - 1].popularity[c.id] ?? 50;
-                const delta = value - previous;
+                const delta = round.galaNumber === entryGala ? 0 : value - previous;
                 const present = round.activeIds.includes(c.id) || round.galaNumber === entryGala;
                 const details = round.events.filter(event => event.participantIds.includes(c.id)).map(event => event.title).join(" · ");
                 return <td key={round.galaNumber} style={{ opacity: present ? 1 : 0.55 }} title={present ? details || "Sin cambios" : "Fuera de la casa: popularidad congelada"}>

@@ -227,7 +227,10 @@ for(let seed=1;seed<=500;seed++) {
       assert(prev.activeIds.includes(w.departedId));
       assert(!state.activeIds.includes(w.departedId));
       assert(state.activeIds.includes(w.replacementId));
-      assert.equal(state.popularity[w.replacementId],50);
+      const initialCount = Object.values(state.timeline).filter(row=>row[0]==='Entra').length;
+      const lateEntry = w.galaNumber - 2 >= Math.ceil((initialCount-state.finalSize)/2);
+      assert.equal(state.popularity[w.replacementId],lateEntry?40:50);
+      assert.equal(state.houseRounds.find(r=>r.galaNumber===w.galaNumber).popularity[w.replacementId],lateEntry?40:50);
       assert.equal(state.timeline[w.departedId][w.galaNumber-1],'Abandono');
       assert(state.timeline[w.replacementId].slice(0,w.galaNumber-1).every(s=>s===''));
       assert(!state.pendingNominees.includes(w.departedId));

@@ -109,7 +109,8 @@ export function buildNominations(state: GameState, scheme: number[], immuneId: s
 }
 /** Popularity changes the odds, never guarantees a result. The final is a vote to win. */
 export function audiencePercents(ids: string[], popularity: Record<string, number>, rand: () => number, final = false) {
-  const weights = ids.map(id => (0.05 - Math.log(Math.max(1e-12, 1 - rand()))) * Math.exp((final ? 1 : -1) * ((popularity[id] ?? 50) - 50) / 30));
+  // El apoyo acumulado pesa más; el azar acotado permite sorpresas entre apoyos cercanos.
+  const weights = ids.map(id => (0.5 + rand()) * Math.exp((final ? 1 : -1) * ((popularity[id] ?? 50) - 50) / 22));
   const sum = weights.reduce((a, b) => a + b, 0);
   const units = weights.map(weight => weight / sum * 1000);
   const rounded = units.map(Math.floor);
