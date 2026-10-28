@@ -45,7 +45,17 @@ export function GalaSummary({
   const positive = mode === "positive";
   const sorted = Object.entries(partialTotals).sort((a, b) => positive ? a[1] - b[1] : b[1] - a[1]);
   const rules = nominationRules(mode, Object.keys(gala.nominationTotals).length);
-  const provisionalSet = new Set(hasLeader && showProvisional ? gala.provisionalNominees : []);
+  // Solo usa votos ya revelados y concursantes elegibles en esta gala.
+  const excluded = new Set([
+    gala.events.immunity?.winnerId,
+    gala.events.repechage?.returnedId,
+    gala.events.withdrawal?.replacementId,
+  ]);
+  const eligibleTotals = sorted.filter(([id, points]) => !excluded.has(id) && (positive || points > 0));
+  const cutoff = eligibleTotals[Math.min(rules.min, eligibleTotals.length) - 1]?.[1];
+  const provisionalSet = new Set(revealCount > 0 && cutoff !== undefined
+    ? eligibleTotals.filter(([, points]) => positive ? points <= cutoff : points >= cutoff).map(([id]) => id)
+    : []);
 
   if (gala.finalStretch) return (
     <section className="card cardPad">
@@ -197,7 +207,7 @@ export function GalaSummary({
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             {gala.finalNominees.map(id => (
-              <span key={id} className="badge">
+              <span key={id} className="badge" style={{ borderColor: STATUS_COLORS.Nominado, background: STATUS_COLORS.Nominado, color: "#111" }}>
                 🔸 <b>{idToName.get(id)}</b>
               </span>
             ))}
