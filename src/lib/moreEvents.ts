@@ -6,6 +6,8 @@ function group(stories: Story[], min: number, max: number, impact: [number, numb
 }
 
 export const moreEvents: EventTemplate[] = [
+  { title: "Una noche íntima", description: "Comparten una noche de intimidad consentida, lejos del resto de la casa, y su complicidad crece.", min: 2, max: 2, impact: [5, 10], effect: "connection" },
+  { title: "La prueba acaba a gritos", description: "Se culpan mutuamente por un error en la prueba y la discusión deja su relación muy tocada.", min: 2, max: 4, impact: [-15, -8], conflict: true },
   ...group([
     ["Desayuno para todos", "Madruga y prepara el desayuno de toda la casa. La audiencia agradece el gesto."],
     ["Una disculpa sincera", "Reconoce un error sin excusas y pide perdón delante del grupo."],

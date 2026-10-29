@@ -9,7 +9,7 @@ export function ContestantPortrait({ contestant, size = 120, align = "center" }:
   const src = contestant.photoUrl || (contestant.seasonId ? `/${contestant.seasonId}/${slug}.jpg` : "");
   if (!src) return null;
   return <img src={src} alt={contestant.name} width={size} height={size}
-    style={{ display: "block", width: size, height: size, objectFit: "cover", borderRadius: 16, margin: align === "left" ? "14px 0" : "14px auto", filter: "none" }}
+    style={{ display: "block", width: size, height: size, objectFit: "cover", borderRadius: size === 31 ? 6 : 16, margin: align === "left" ? "14px 0" : "14px auto", filter: "none" }}
     onError={event => {
       const img = event.currentTarget;
       if (img.dataset.fallbackApplied) return;

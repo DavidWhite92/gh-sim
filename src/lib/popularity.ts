@@ -1,11 +1,13 @@
+import { ensureRelationships, updateRelationships, rankRelations, relationshipScore } from "./relationships";
 import { galaNominationMode } from "./mechanics";
-import type { GameState, HouseEvent, HouseRound } from "./types";
+import type { GameState, HouseEvent, HouseRound, Relationships } from "./types";
 import { shuffle } from "./rng";
 
 import { templates } from "./houseEventCatalog";
 import { moreEvents } from "./moreEvents";
 
 export function generateHouseRound(state: GameState, rand: () => number): HouseRound {
+  ensureRelationships(state);
   const count = 4 + Math.floor(rand() * 5);
   state.couples = (state.couples ?? []).filter(pair => pair.every(id => state.activeIds.includes(id)));
   const recentTitles = new Set(state.houseRounds.slice(-3).flatMap(round => round.events.map(event => event.title)));
@@ -52,8 +54,9 @@ export function generateHouseRound(state: GameState, rand: () => number): HouseR
     });
     events.push({ title: template.title, description: template.description, participantIds, changes,
       positive: template.impact[0] > 0, conflict: !!template.conflict, effect: template.effect });
+    updateRelationships(state, events[events.length - 1]);
   }
-  return { finalStretch: state.finalStretchActive, nominationMode: galaNominationMode(state), galaNumber: state.gala, events, popularity: { ...state.popularity },
+  return { finalStretch: state.finalStretchActive, nominationMode: galaNominationMode(state), galaNumber: state.gala, events, relationships: structuredClone(state.relationships), popularity: { ...state.popularity },
     activeIds: [...state.activeIds], couples: state.couples.map(pair => [...pair] as [string, string]) };
 }
 
@@ -75,8 +78,8 @@ export function buildNominations(state: GameState, scheme: number[], immuneId: s
       const rivals = new Set(events.filter(e => e.conflict && e.participantIds.includes(fromId)).flatMap(e => e.participantIds));
       const others = eligible.filter(id => !friends.includes(id));
       // Afinidad primero, neutrales después y conflictos al final. Los puntos mayores van primero.
-      const targets = [...shuffle(friends, rand), ...shuffle(others.filter(id => !rivals.has(id)), rand),
-        ...shuffle(others.filter(id => rivals.has(id)), rand)].slice(0, scheme.length);
+      const targets = [...rankRelations(friends, fromId, state.relationships, true, rand), ...rankRelations(others.filter(id => !rivals.has(id)), fromId, state.relationships, true, rand),
+        ...rankRelations(others.filter(id => rivals.has(id)), fromId, state.relationships, true, rand)].slice(0, scheme.length);
       if (targets.length !== scheme.length) throw new Error("No hay suficientes objetivos para votar en positivo.");
       return { fromId, points: Object.fromEntries(targets.map((id, i) => [id, scheme[i]])) };
     });
@@ -91,18 +94,20 @@ export function buildNominations(state: GameState, scheme: number[], immuneId: s
     // Tiene en cuenta los conflictos de cualquiera de los miembros para elegir los objetivos.
     const sharedConflicts = events.filter(e => e.conflict && e.participantIds.some(id => members.includes(id)))
       .map(e => ({ ...e, participantIds: [...new Set([...e.participantIds, members[0]])] }));
-    const targets = nominationTargets(members[0], common, scheme.length, sharedConflicts, rand);
+    const sharedRelations = { [members[0]]: Object.fromEntries(common.map(id => [id,
+      members.reduce((sum, member) => sum + relationshipScore(state.relationships, member, id), 0) / members.length])) };
+    const targets = nominationTargets(members[0], common, scheme.length, sharedConflicts, rand, sharedRelations);
     for (const member of members) pactTargets.set(member, targets);
   }
   return shuffle(activeIds, rand).map(fromId => {
     const agreed = pactTargets.get(fromId);
     const targets = agreed ? shuffle(agreed, rand) : [];
     const unprotected = eligibleFor(fromId).filter(id => !targets.includes(id));
-    targets.push(...nominationTargets(fromId, unprotected, scheme.length - targets.length, events, rand));
+    targets.push(...nominationTargets(fromId, unprotected, scheme.length - targets.length, events, rand, state.relationships));
     // Completa siempre la papeleta: los vínculos reciben los puntos más bajos.
     const protectedTargets = activeIds.filter(id =>
       id !== fromId && id !== immuneId && !targets.includes(id));
-    targets.push(...nominationTargets(fromId, protectedTargets, scheme.length - targets.length, events, rand));
+    targets.push(...nominationTargets(fromId, protectedTargets, scheme.length - targets.length, events, rand, state.relationships));
     if (targets.length !== scheme.length) throw new Error("No hay suficientes objetivos válidos para completar la nominación.");
     return { fromId, points: Object.fromEntries(targets.map((id, i) => [id, scheme[i]])) };
   });
@@ -119,8 +124,12 @@ export function audiencePercents(ids: string[], popularity: Record<string, numbe
   return Object.fromEntries(ids.map((id, i) => [id, rounded[i] / 10]));
 }
 
-export function nominationTargets(fromId: string, eligible: string[], count: number, events: HouseEvent[], rand: () => number) {
+export function nominationTargets(fromId: string, eligible: string[], count: number, events: HouseEvent[], rand: () => number, relations?: Relationships) {
   const rivals = new Set(events.filter(e => e.conflict && e.participantIds.includes(fromId)).flatMap(e => e.participantIds));
+  if (relations) {
+    const score = (id: string) => relationshipScore(relations, fromId, id) - (rivals.has(id) ? 25 : 0);
+    return shuffle(eligible, rand).sort((a, b) => score(a) - score(b)).slice(0, Math.max(0, count));
+  }
   const pool = [...eligible];
   const chosen: string[] = [];
   while (chosen.length < count && pool.length) {

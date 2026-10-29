@@ -496,3 +496,49 @@ for(let seed=1;seed<=20;seed++) {
 }
 assert.equal(drawnModes.size,3);assert(randomActions&&randomOmissions);
 console.log('PASS: mode draw independent from gala frequency, fixed for season, all modes reached and GH compatibility respected.');
+
+const {updateRelationships,relationshipScore,rankRelations}=load('relationships');
+let relationState=initGame(['A','B','C','D','E','F'],123);
+const [ra,rb,rc,rd,re,rf]=relationState.activeIds;
+for(const a of relationState.activeIds)for(const b of relationState.activeIds)if(a!==b)assert.equal(relationState.relationships[a][b],50);
+function relationshipEvent(effect,positive,conflict,ids=[ra,rb]){return {title:'Test',description:'',participantIds:ids,changes:ids.map(id=>({id,before:50,after:positive?60:40,delta:positive?10:-10})),effect,positive,conflict};}
+updateRelationships(relationState,relationshipEvent('connection',true,false));assert.equal(relationState.relationships[ra][rb],60);
+updateRelationships(relationState,relationshipEvent(undefined,false,true));assert.equal(relationState.relationships[ra][rb],50);
+updateRelationships(relationState,relationshipEvent('pact',true,false));assert.equal(relationState.relationships[ra][rb],50);
+for(let i=0;i<20;i++)updateRelationships(relationState,relationshipEvent('couple',true,false));assert.equal(relationState.relationships[ra][rb],100);
+for(let i=0;i<20;i++)updateRelationships(relationState,relationshipEvent('breakup',false,true));assert.equal(relationState.relationships[ra][rb],0);
+assert.equal(relationState.relationships[rb][ra],0);
+[rb,rc,rd,re,rf].forEach((id,index)=>relationState.relationships[ra][id]=index*20);
+assert.equal(nominationTargets(ra,[rb,rc,rd,re,rf],3,[],mulberry32(2),relationState.relationships).join(),[rb,rc,rd].join());
+relationState.nominationMode='positive';
+assert.equal(Object.keys(buildNominations(relationState,[3,2,1],undefined,[],mulberry32(2)).find(n=>n.fromId===ra).points).join(),[rf,re,rd].join());
+let historyChanges=0;
+for(let seed=1;seed<=30;seed++){
+ let state=initGame(Array.from({length:14},(_,i)=>'Relation '+i),seed,{leaderPolicy:'always',leaderMode:seed%2?'save':'subtract1',withdrawals:true,reserves:[{name:'New A'},{name:'New B'}]});
+ while(!state.finished){
+  const previous=structuredClone(state.relationships);state=playNextGala(state);
+  const round=state.houseRounds.at(-1);
+  for(const event of round.events)for(const change of event.relationshipChanges??[]){historyChanges++;assert.equal(change.after-change.before,change.delta);assert(change.after>=0&&change.after<=100);}
+  for(const [a,targets] of Object.entries(state.relationships))for(const [b,value]of Object.entries(targets)){
+   assert.equal(value,state.relationships[b][a]);assert(value>=0&&value<=100);
+   assert.equal(round.relationships[a][b],value);
+   if(previous[a]?.[b]!==undefined&&!round.events.some(event=>event.relationshipChanges?.some(c=>[c.a,c.b].includes(a)&&[c.a,c.b].includes(b))))assert.equal(value,previous[a][b]);
+  }
+  const gala=state.galas.at(-1);if(!gala||gala.galaNumber!==round.galaNumber)continue;
+  const action=gala.events.leader??gala.events.leaderSubtract;
+  if(action){
+   const target=action.savedId??action.targetId;
+   if(target!==action.leaderId){
+    let candidates=gala.provisionalNominees;
+    if(gala.events.leader&&gala.nominationMode!=='positive'){
+     const given=gala.nominations.find(n=>n.fromId===action.leaderId).points;
+     const unvoted=candidates.filter(id=>!(id in given));if(unvoted.length)candidates=unvoted;
+    }
+    candidates=candidates.filter(id=>id!==action.leaderId);
+    assert.equal(relationshipScore(state.relationships,action.leaderId,target),Math.max(...candidates.map(id=>relationshipScore(state.relationships,action.leaderId,id))));
+   }
+  }
+ }
+}
+assert(historyChanges>0);
+console.log('PASS: neutral relations, event direction, clamps, symmetric history, worst/best targets, leader affinity and frozen absent pairs.',historyChanges);

@@ -1,3 +1,4 @@
+import { ensureRelationships, rankRelations } from "./relationships";
 import { resolveMechanics, nominationRules, galaNominationMode } from "./mechanics";
 import { applyWithdrawal, withdrawalChance } from "./withdrawals";
 import { generateHouseRound, audiencePercents, buildNominations } from "./popularity";
@@ -104,6 +105,7 @@ export function initGame(inputs: ContestantInput[], seed = Date.now(), options: 
     activeIds,
     eliminatedIds: [],
     timeline,
+    relationships: {},
     popularity: Object.fromEntries(activeIds.map(id => [id, 50])),
     houseRounds: [],
     couples: [],
@@ -118,6 +120,7 @@ export function initGame(inputs: ContestantInput[], seed = Date.now(), options: 
     lastEvictionGala: null,
   } as any;
 
+  ensureRelationships(state);
   ensureTimelineColumns(state, 1);
   for (const id of state.activeIds) setStatusForGala(state, id, 0, "Entra");
   return state;
@@ -297,19 +300,8 @@ export function playNextGala(prev: GameState): GameState {
     // Solo hay una modalidad de líder por temporada; el ajuste puede cambiar los nominados.
     if (state.leaderMode !== "save" && state.leaderPolicy !== "never" && (state.leaderPolicy === "always" || rand() < 0.22) && provisional.length > 0) {
       const leaderId = pickOne(eligibleIds, rand);
-      const given = nominations.find(n => n.fromId === leaderId)?.points ?? {};
-      let candidates: string[];
-      if (positive) {
-        const most = Math.max(...provisional.map(id => given[id] ?? 0));
-        candidates = provisional.includes(leaderId) && rand() < 0.7 ? [leaderId]
-          : provisional.filter(id => (given[id] ?? 0) === most);
-      } else if (provisional.includes(leaderId) && rand() < 0.7) {
-        candidates = [leaderId];
-      } else {
-        const least = Math.min(...provisional.map(id => given[id] ?? 0));
-        candidates = provisional.filter(id => (given[id] ?? 0) === least);
-      }
-      const targetId = pickOne(candidates, rand);
+      const targetId = provisional.includes(leaderId) && rand() < 0.7 ? leaderId
+        : rankRelations(provisional.filter(id => id !== leaderId), leaderId, state.relationships, true, rand)[0] ?? leaderId;
       const before = totals[targetId];
       const points = state.leaderMode === "subtract1" ? 1 : 3;
       totals[targetId] += positive ? points : -points;
@@ -326,75 +318,11 @@ export function playNextGala(prev: GameState): GameState {
       const leaderNom = nominations.find(n => n.fromId === leaderId);
       const leaderGiven = leaderNom?.points ?? {};
 
-      // Regla "Salvación del líder":
-      // - No puede salvar a alguien que haya nominado.
-      // - Si casualmente ha nominado a TODOS los provisionales,
-      //   salva al que menos puntos le haya dado (típicamente 1 punto).
-      // - Si el líder está provisionalmente nominado con un porcentaje/"peso" muy alto,
-      //   se prioriza que se salve a sí mismo (no siempre, pero es muy probable).
-
-      const leaderIsProvisional = provisional.includes(leaderId);
-      // Heurística de "porcentaje alto": si el líder es de los más puntuados entre los provisionales.
-      const provisionalSorted = [...provisional].sort((a, b) => (totals[b] ?? 0) - (totals[a] ?? 0));
-      const leaderRank = provisionalSorted.indexOf(leaderId); // 0 = más alto
-      const leaderHighRisk = leaderIsProvisional && leaderRank >= 0 && leaderRank <= 0; // top 1
-      const leaderMedRisk = leaderIsProvisional && leaderRank >= 0 && leaderRank <= 1; // top 2
-
-      // Candidatos que el líder NO ha nominado
-      const notNominatedByLeader = provisional.filter(id => !(id in leaderGiven));
-
-      let savedId: string;
-
-      // Prioriza auto-salvarse si está nominado con riesgo alto
-      if (positive) {
-        // En positivo se salva a quien se apoya más, o a sí mismo si está en riesgo.
-        const mostSupported = Math.max(...provisional.map(id => leaderGiven[id] ?? 0));
-        savedId = leaderIsProvisional && rand() < 0.7 ? leaderId
-          : pickOne(provisional.filter(id => (leaderGiven[id] ?? 0) === mostSupported), rand);
-      } else if (leaderIsProvisional) {
-        const pSelf = leaderHighRisk ? 0.9 : leaderMedRisk ? 0.7 : 0.55;
-        if (rand() < pSelf) {
-          savedId = leaderId;
-        } else {
-          // Si no se salva, debe respetar la regla de no salvar a alguien que nominó
-          if (notNominatedByLeader.length > 0) {
-            savedId = pickOne(notNominatedByLeader, rand);
-          } else {
-            // Ha nominado a TODOS los provisionales: salva al que menos puntos dio
-            let minPts = Infinity;
-            let mins: string[] = [];
-            for (const id of provisional) {
-              const pts = leaderGiven[id] ?? Infinity;
-              if (pts < minPts) {
-                minPts = pts;
-                mins = [id];
-              } else if (pts === minPts) {
-                mins.push(id);
-              }
-            }
-            savedId = pickOne(mins.length ? mins : provisional, rand);
-          }
-        }
-      } else {
-        // El líder NO está nominado: salva a alguien que no haya nominado.
-        if (notNominatedByLeader.length > 0) {
-          savedId = pickOne(notNominatedByLeader, rand);
-        } else {
-          // Caso raro: ha nominado a todos los provisionales
-          let minPts = Infinity;
-          let mins: string[] = [];
-          for (const id of provisional) {
-            const pts = leaderGiven[id] ?? Infinity;
-            if (pts < minPts) {
-              minPts = pts;
-              mins = [id];
-            } else if (pts === minPts) {
-              mins.push(id);
-            }
-          }
-          savedId = pickOne(mins.length ? mins : provisional, rand);
-        }
-      }
+      // Se mantiene la posibilidad de salvarse a sí mismo y la protección de no salvar a quien nominó.
+      const notNominated = provisional.filter(id => !(id in leaderGiven));
+      const candidates = positive || !notNominated.length ? provisional : notNominated;
+      const savedId = provisional.includes(leaderId) && rand() < 0.7 ? leaderId
+        : rankRelations(candidates, leaderId, state.relationships, true, rand)[0];
 
       events.leader = { leaderId, savedId };
 

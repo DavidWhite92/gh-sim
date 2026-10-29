@@ -7,6 +7,7 @@ import { STATUS_COLORS, type GameState } from "@/lib/types";
 import { ContestantPortrait } from "@/components/ContestantPortrait";
 import { ParticipantMenu } from "@/components/ParticipantMenu";
 import { HouseEvents } from "@/components/HouseEvents";
+import { RelationshipsTable } from "@/components/RelationshipsTable";
 import { PopularityTable } from "@/components/PopularityTable";
 import { RepechageResults } from "@/components/RepechageResults";
 import { WithdrawalNotice } from "@/components/WithdrawalNotice";
@@ -85,7 +86,7 @@ export default function SimulatorClient() {
   const [showLeaderSave, setShowLeaderSave] = useState(false);
 
   const [eventsSeen, setEventsSeen] = useState(true);
-  const [showPopularity, setShowPopularity] = useState(false);
+  const [resultView, setResultView] = useState<"journey" | "popularity" | "relationships">("journey");
 
   // Table gating
   const [showTable, setShowTable] = useState(false);
@@ -218,7 +219,7 @@ export default function SimulatorClient() {
     setWithdrawalStep(0);
     setRepechageStep(0);
     setEventsSeen(false);
-    setShowPopularity(false);
+    setResultView("journey");
     // reset pasos UI
     setEvictStep(0);
     setRevealNomCount(0);
@@ -692,13 +693,13 @@ export default function SimulatorClient() {
         <>
           {isFinalFinished && finalDoneForGala === lastVote?.galaNumber && (
             <div className="row">
-              <button className="btn" onClick={() => setShowPopularity(value => !value)}>
-                {showPopularity ? "Tabla de Recorrido" : "Tabla de Popularidad"}
-              </button>
+              <button className="btn" aria-pressed={resultView === "journey"} onClick={() => setResultView("journey")}>Tabla de Recorrido</button>
+              <button className="btn" aria-pressed={resultView === "popularity"} onClick={() => setResultView("popularity")}>Tabla de Popularidad</button>
+              <button className="btn" aria-pressed={resultView === "relationships"} onClick={() => setResultView("relationships")}>Relaciones</button>
             </div>
           )}
-          {showPopularity && isFinalFinished
-            ? <PopularityTable state={state} />
+          {resultView === "relationships" && isFinalFinished ? <RelationshipsTable state={state} />
+            : resultView === "popularity" && isFinalFinished ? <PopularityTable state={state} />
             : <ResultsTable state={state} />}
         </>
       )}

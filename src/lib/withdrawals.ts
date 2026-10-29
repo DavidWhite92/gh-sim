@@ -1,3 +1,4 @@
+import { ensureRelationships } from "./relationships";
 import type { GameState, WithdrawalRecord } from "./types";
 import { pickOne } from "./rng";
 
@@ -28,6 +29,7 @@ export function applyWithdrawal(state: GameState, phase: WithdrawalRecord["phase
   state.pendingNominees = state.pendingNominees.filter(id => id !== departedId);
   state.timeline[departedId][state.gala - 1] = "Abandono";
   state.contestants.push(replacement);
+  ensureRelationships(state);
   state.activeIds.push(replacement.id);
   const initialCount = Object.values(state.timeline).filter(row => row[0] === "Entra").length;
   // Gala 2: primeras nominaciones; desde Gala 3 transcurre una expulsión por gala.
@@ -35,7 +37,10 @@ export function applyWithdrawal(state: GameState, phase: WithdrawalRecord["phase
   const entryPopularity = lateEntry ? 40 : 50;
   state.popularity[replacement.id] = entryPopularity;
   const round = state.houseRounds.find(round => round.galaNumber === state.gala);
-  if (round) round.popularity[replacement.id] = entryPopularity;
+  if (round) {
+    round.popularity[replacement.id] = entryPopularity;
+    round.relationships = structuredClone(state.relationships);
+  }
   state.timeline[replacement.id] = Array(state.gala).fill("");
   state.timeline[replacement.id][state.gala - 1] = "Entra";
   const record: WithdrawalRecord = { galaNumber: state.gala, phase, departedId, replacementId: replacement.id, followedId };

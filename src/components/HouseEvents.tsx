@@ -1,3 +1,4 @@
+import { ContestantPortrait } from "@/components/ContestantPortrait";
 import { galaNominationMode } from "@/lib/mechanics";
 import type { GameState, HouseRound } from "@/lib/types";
 
@@ -9,12 +10,13 @@ export function HouseEvents({ state, round, onContinue }: { state: GameState; ro
       <div className="row">
         <h2 style={{ fontSize: 18, margin: 0 }}>En la casa · Gala {round.galaNumber}</h2>
       </div>
-      <p className="muted">Lo ocurrido en la casa cambia la opinión del público.</p>
+      <p className="muted">Lo ocurrido en la casa cambia la opinión del público y las relaciones entre los concursantes.</p>
       <div style={{ display: "grid", gap: 12 }}>
         {round.events.map((event, index) => (
           <article key={index} className="houseEvent" style={{ borderLeftColor: event.positive ? "#36a879" : "#d58363" }}>
             <strong>{event.positive ? "↑" : "↓"} {event.title}</strong>
             <div style={{ marginTop: 6, fontWeight: 700 }}>{event.participantIds.map(id => names.get(id)).join(" · ")}</div>
+            <div className="row" style={{ gap: 6 }}>{event.participantIds.map(id => <ContestantPortrait key={id} contestant={state.contestants.find(c => c.id === id)} size={31} align="left" />)}</div>
             <p style={{ margin: "6px 0 10px", lineHeight: 1.5 }}>{event.description}</p>
             {!round.finalStretch && positiveVoting && event.conflict && <p className="muted">Esta discusión reduce la prioridad de apoyarse en las nominaciones positivas.</p>}
             {!round.finalStretch && positiveVoting && event.effect && event.effect !== "breakup" && <p className="muted">Este vínculo favorece que se apoyen con los puntos más altos en las nominaciones positivas.</p>}

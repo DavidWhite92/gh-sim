@@ -73,6 +73,7 @@ export function GalaSummary({
       {gala.events.withdrawal && <WithdrawalNotice state={state} record={gala.events.withdrawal} />}
       {gala.events.repechage && <RepechageResults state={state} record={gala.events.repechage} />}
       <div className="row">{gala.finalNominees.map(id => <span className="badge" key={id}>{idToName.get(id)}</span>)}</div>
+      <div className="row" style={{ gap: 6 }}>{gala.finalNominees.map(id => <ContestantPortrait key={id} contestant={state.contestants.find(c => c.id === id)} size={31} align="left" />)}</div>
     </section>
   );
 
@@ -222,6 +223,7 @@ export function GalaSummary({
               </span>
             ))}
           </div>
+          <div className="row" style={{ gap: 6 }}>{gala.finalNominees.map(id => <ContestantPortrait key={id} contestant={state.contestants.find(c => c.id === id)} size={31} align="left" />)}</div>
         </>
       )}
 
