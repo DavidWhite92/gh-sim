@@ -1,6 +1,7 @@
 /** Export the complete laid-out table, including cells outside its scroll viewport. */
 export async function downloadTableJpg(table: HTMLTableElement, filename: string) {
   await document.fonts.ready;
+  await Promise.all(Array.from(table.querySelectorAll("img")).map(img => img.decode().catch(() => undefined)));
   const bounds = table.getBoundingClientRect();
   const padding = 20;
   const headingHeight = 40;
@@ -35,6 +36,26 @@ export async function downloadTableJpg(table: HTMLTableElement, filename: string
         ctx.strokeStyle = "#b8bec5";
         ctx.lineWidth = 0.5;
         ctx.strokeRect(x, y, rect.width, rect.height);
+      }
+
+      for (const img of Array.from(cell.querySelectorAll("img"))) {
+        if (!img.complete || !img.naturalWidth) continue;
+        const imageRect = img.getBoundingClientRect();
+        // Comprueba cada imagen por separado para no invalidar el JPG por fotos externas sin CORS.
+        const tile = document.createElement("canvas");
+        tile.width = Math.max(1, Math.ceil(imageRect.width * scale));
+        tile.height = Math.max(1, Math.ceil(imageRect.height * scale));
+        const tileCtx = tile.getContext("2d");
+        if (!tileCtx) continue;
+        const crop = Math.min(img.naturalWidth, img.naturalHeight);
+        tileCtx.drawImage(img, (img.naturalWidth - crop) / 2, (img.naturalHeight - crop) / 2, crop, crop, 0, 0, tile.width, tile.height);
+        try { tileCtx.getImageData(0, 0, 1, 1); } catch { continue; }
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(imageRect.left + offsetX, imageRect.top + offsetY, imageRect.width, imageRect.height, parseFloat(getComputedStyle(img).borderRadius) || 0);
+        ctx.clip();
+        ctx.drawImage(tile, imageRect.left + offsetX, imageRect.top + offsetY, imageRect.width, imageRect.height);
+        ctx.restore();
       }
 
       const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);

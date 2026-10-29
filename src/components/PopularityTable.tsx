@@ -1,3 +1,5 @@
+import { ContestantPortrait } from "./ContestantPortrait";
+import { STATUS_COLORS } from "@/lib/types";
 import type { GameState } from "@/lib/types";
 
 export function PopularityTable({ state }: { state: GameState }) {
@@ -20,15 +22,20 @@ export function PopularityTable({ state }: { state: GameState }) {
             const entryGala = state.timeline[c.id].findIndex(status => !!status) + 1;
             const rank = ordered.findIndex(other => state.popularity[other.id] === score) + 1;
             return <tr key={c.id}>
-              <td className="nameCell">{c.name}</td><td>{rank}</td><td>{entryGala === 1 ? 50 : "—"}</td>
+              <td className="nameCell" style={{ textAlign: "center" }}><div className="contestantTableName"><ContestantPortrait contestant={c} size={31} compact /><span>{c.name}</span></div></td><td>{rank}</td><td>{entryGala === 1 ? 50 : "—"}</td>
               {state.houseRounds.map((round, i) => {
                 if (round.galaNumber < entryGala) return <td key={round.galaNumber} title="Todavía no había entrado">—</td>;
                 const value = round.popularity[c.id] ?? 50;
                 const previous = i === 0 ? 50 : state.houseRounds[i - 1].popularity[c.id] ?? 50;
                 const delta = round.galaNumber === entryGala ? 0 : value - previous;
                 const present = round.activeIds.includes(c.id) || round.galaNumber === entryGala;
+                const status = state.timeline[c.id][round.galaNumber - 1];
+                const nominated = status === "Nominado" || status === "Nominada" || status === "NominadoPublico";
+                const expelled = status === "Expulsado" || status === "Expulsada";
                 const details = round.events.filter(event => event.participantIds.includes(c.id)).map(event => event.title).join(" · ");
-                return <td key={round.galaNumber} style={{ opacity: present ? 1 : 0.55 }} title={present ? details || "Sin cambios" : "Fuera de la casa: popularidad congelada"}>
+                return <td key={round.galaNumber} style={{ opacity: present || nominated || expelled ? 1 : 0.55,
+                  background: expelled ? STATUS_COLORS.Expulsado : nominated ? STATUS_COLORS.Nominado : undefined,
+                  color: expelled || nominated ? "#111" : undefined, fontWeight: expelled ? 700 : undefined }} title={present ? details || "Sin cambios" : "Fuera de la casa: popularidad congelada"}>
                   {value}{delta !== 0 && <span> ({delta > 0 ? "+" : ""}{delta})</span>}
                 </td>;
               })}

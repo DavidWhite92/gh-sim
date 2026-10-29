@@ -1,5 +1,6 @@
 "use client";
 
+import { ContestantPortrait } from "./ContestantPortrait";
 import { useRef, useState } from "react";
 import { downloadTableJpg } from "@/lib/downloadTableJpg";
 import { GameState, STATUS_COLORS, Status, Gender } from "@/lib/types";
@@ -179,7 +180,7 @@ export function ResultsTable({ state }: { state: GameState }) {
               const row = state.timeline[id] ?? [];
               return (
                 <tr key={id}>
-                  <td className="nameCell" style={{ textAlign: "center", border: cellBorder }}>{name}</td>
+                  <td className="nameCell" style={{ textAlign: "center", border: cellBorder }}><div className="contestantTableName"><ContestantPortrait contestant={state.contestants.find(c => c.id === id)} size={31} compact /><span>{name}</span></div></td>
                   {(() => {
   // Detecta ausencias antes de entrar y tras cada salida, respetando las repescas.
   let outside = true;
