@@ -185,6 +185,7 @@ hr.soft{
 
 /* Filas de resumen (Eliminados / No eliminados): centra el contenido también en vertical */
 .table tr.summaryRow td{
+  padding: 6px 3px;
   vertical-align: middle;
 }
 
