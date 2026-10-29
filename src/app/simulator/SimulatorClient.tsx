@@ -573,6 +573,7 @@ export default function SimulatorClient() {
                 <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1 }}>
                   {finalStep < 5 ? lines[finalStep] : (idToName.get(nameToShow) ?? "")}
                 </div>
+                {finalStep >= 5 && <ContestantPortrait contestant={idToContestant.get(nameToShow)} size={62} />}
 
                 <div className="row" style={{ justifyContent: "center", marginTop: 14 }}>
                   <button
@@ -613,9 +614,10 @@ export default function SimulatorClient() {
                 .slice()
                 .sort((a: string, b: string) => (lastVote.percents[b] ?? 0) - (lastVote.percents[a] ?? 0));
               return ranked.map((id: string, i: number) => (
-                <span key={id} className="badge">
-                  {i === 0 ? "🏆" : i === 1 ? "🥈" : i === 2 ? "🥉" : "4.º"} <b>{idToName.get(id)}</b>
-                </span>
+                <div key={id}>
+                  <span className="badge">{i === 0 ? "🏆" : i === 1 ? "🥈" : i === 2 ? "🥉" : "4.º"} <b>{idToName.get(id)}</b></span>
+                  <ContestantPortrait contestant={idToContestant.get(id)} size={62} />
+                </div>
               ));
             })()}
           </div>

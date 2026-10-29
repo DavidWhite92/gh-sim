@@ -25,7 +25,7 @@ export function RelationshipsTable({ state }: { state: GameState }) {
         <tbody>{people.filter(c => c.id !== selected.id).map(c => {
           const start = Math.max(entryGala(selected.id), entryGala(c.id));
           return <tr key={c.id}>
-            <td className="nameCell"><div className="row" style={{ gap: 6, flexWrap: "nowrap" }}><ContestantPortrait contestant={c} size={31} align="left" />{c.name}</div></td>
+            <td className="nameCell"><div className="contestantTableName"><ContestantPortrait contestant={c} size={31} compact /><span>{c.name}</span></div></td>
             <td>{start === 1 ? 50 : "—"}</td>
             {state.houseRounds.map((round, index) => {
               if (round.galaNumber < start) return <td key={round.galaNumber}>—</td>;
