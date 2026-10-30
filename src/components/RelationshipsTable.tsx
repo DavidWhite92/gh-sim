@@ -7,8 +7,13 @@ import type { GameState } from "@/lib/types";
 export function RelationshipsTable({ state }: { state: GameState }) {
   const people = [...state.contestants].sort((a, b) => a.name.localeCompare(b.name, "es"));
   const [selectedId, setSelectedId] = useState(people[0]?.id ?? "");
+  const [sortDescending, setSortDescending] = useState(true);
   const selected = people.find(c => c.id === selectedId) ?? people[0];
   if (!selected) return null;
+  const sortedPeople = people.filter(c => c.id !== selected.id).sort((a, b) => {
+    const difference = relationshipScore(state.relationships, selected.id, b.id) - relationshipScore(state.relationships, selected.id, a.id);
+    return (sortDescending ? difference : -difference) || a.name.localeCompare(b.name, "es");
+  });
   const entryGala = (id: string) => state.timeline[id].findIndex(status => !!status) + 1;
   return <section className="card">
     <div className="cardPad">
@@ -21,8 +26,8 @@ export function RelationshipsTable({ state }: { state: GameState }) {
     </div>
     <div className="tableWrap" tabIndex={0} role="region" aria-label="Evolución de relaciones por gala">
       <table className="table popularityTable">
-        <thead><tr><th>Concursante</th><th>Inicio</th>{state.houseRounds.map(round => <th key={round.galaNumber}>Gala {round.galaNumber}</th>)}<th>Relación final</th></tr></thead>
-        <tbody>{people.filter(c => c.id !== selected.id).map(c => {
+        <thead><tr><th>Concursante</th><th>Inicio</th>{state.houseRounds.map(round => <th key={round.galaNumber}>Gala {round.galaNumber}</th>)}<th aria-sort={sortDescending ? "descending" : "ascending"}><button type="button" className="relationshipSort" onClick={() => setSortDescending(value => !value)} aria-label={`Ordenar relación final de ${sortDescending ? "menor a mayor" : "mayor a menor"}`}>Relación final {sortDescending ? "↓" : "↑"}</button></th></tr></thead>
+        <tbody>{sortedPeople.map(c => {
           const start = Math.max(entryGala(selected.id), entryGala(c.id));
           return <tr key={c.id}>
             <td className="nameCell"><div className="contestantTableName"><ContestantPortrait contestant={c} size={31} compact /><span>{c.name}</span></div></td>

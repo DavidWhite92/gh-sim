@@ -238,9 +238,10 @@ export function playNextGala(prev: GameState): GameState {
       (state as any).finalReady = true;
       (state as any).finalists = [...state.activeIds];
       const withdrawal = state.withdrawals.find(w => w.galaNumber === state.gala);
-      if (withdrawal) state.galas.push({
+      state.galas.push({
         galaNumber: state.gala, nominations: [], nominationTotals: {},
-        provisionalNominees: [], finalNominees: [], events: { withdrawal },
+        finalistIds: [...state.activeIds],
+        provisionalNominees: [], finalNominees: [], events: withdrawal ? { withdrawal } : {},
       });
       state.gala += 1;
       return state;

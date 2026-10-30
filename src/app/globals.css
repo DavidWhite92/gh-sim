@@ -432,3 +432,18 @@ html[data-theme="light"] .participantMenu li { border-color: #e5e7eb; }
 }
 .contestantTableName > span { flex: 1; text-align: center; }
 .popularityTable th, .popularityTable td { border: 1px solid #a8aaad; }
+
+/* Escenas fijas: no ocupan ancho ni alteran el desplazamiento de las tablas. */
+.appShell { position: relative; isolation: isolate; }
+.sceneBackground {
+  --scene-overlay: rgba(0, 0, 0, .88);
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+html[data-theme="light"] .sceneBackground { --scene-overlay: rgba(255, 255, 255, .90); }
+.relationshipSort { border: 0; background: transparent; color: inherit; font: inherit; font-weight: inherit; cursor: pointer; padding: 4px; }

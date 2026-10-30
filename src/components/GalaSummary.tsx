@@ -65,6 +65,19 @@ export function GalaSummary({
     <p>{(eviction.percents[eviction.expelledId] ?? 0).toFixed(1)} % de los votos {eviction.voteToSave ? "para salvar" : "para expulsar"}.</p>
   </div>;
 
+  if (gala.finalistIds) return (
+    <section className="card cardPad">
+      <h3>Gala {gala.galaNumber} · Última expulsión y finalistas</h3>
+      {evictionSummary}
+      {gala.events.withdrawal && <WithdrawalNotice state={state} record={gala.events.withdrawal} />}
+      <h3>Finalistas</h3>
+      <div className="row">{gala.finalistIds.map(id => <div key={id} style={{ textAlign: "center" }}>
+        <b>{idToName.get(id)}</b>
+        <ContestantPortrait contestant={state.contestants.find(c => c.id === id)} size={62} />
+      </div>)}</div>
+    </section>
+  );
+
   if (gala.finalStretch) return (
     <section className="card cardPad">
       <h3>Gala {gala.galaNumber} · Recta Final</h3>

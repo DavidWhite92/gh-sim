@@ -51,7 +51,12 @@ for(let seed=1;seed<=100;seed++) {
       assert(Object.values(vote.percents).every(p=>p>=0&&p<=100));
     }
     const gala=state.galas.at(-1);
-    if(gala&&gala.galaNumber===round.galaNumber) {
+    if(state.finalReady) {
+      assert.equal(JSON.stringify(gala.finalistIds),JSON.stringify(state.activeIds),'last eviction records all finalists');
+      assert.equal(gala.galaNumber,round.galaNumber);
+      assert(state.publicVotes.some(v=>v.galaNumber===gala.galaNumber && v.kind==='eviction'));
+    }
+    if(gala&&gala.galaNumber===round.galaNumber&&!gala.finalistIds) {
       assert.equal(gala.nominations.length,state.activeIds.length);
       const protections = protectedPairs(state, round.events);
       for(const pact of round.events.filter(event=>event.effect==='pact')) {

@@ -98,6 +98,7 @@ export type GalaEvents = {
 };
 
 export type GalaRecord = {
+  finalistIds?: string[];
   finalStretch?: boolean;
   nominationMode?: NominationMode;
   galaNumber: number;

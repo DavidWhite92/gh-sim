@@ -1,5 +1,6 @@
 "use client";
 
+import { SceneBackground, type Scene } from "@/components/SceneBackground";
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { initGame, playNextGala } from "@/lib/sim";
@@ -112,12 +113,10 @@ export default function SimulatorClient() {
   const idToName = new Map(state.contestants.map(c => [c.id, c.name]));
 
   // Galas “revisables”: solo las que ya han llegado a mostrar tabla (evita spoilers)
-  const completedGalaCount = Math.max(0, state.galas.length - (showTable ? 0 : 1));
-  const reviewableGalas = useMemo(() => {
-    // state.galas guarda registros reales (en este simulador empiezan en Gala 2).
-    // Mostramos solo las galas ya cerradas y a partir de la 2.
-    return state.galas.slice(0, completedGalaCount).filter(g => g.galaNumber >= 2);
-  }, [state.galas, completedGalaCount]);
+  const reviewableGalas = useMemo(() => state.galas.filter(g =>
+    g.galaNumber >= 2 && (g.galaNumber < state.gala - 1 || showTable ||
+      (g.finalistIds && eventsSeen && evictDoneForGala === g.galaNumber && withdrawalStep >= (g.events.withdrawal ? 2 : 0)))
+  ), [state.galas, state.gala, showTable, eventsSeen, evictDoneForGala, withdrawalStep]);
 
   const reviewableGalaNumbers = useMemo(() => {
     return reviewableGalas.map(g => g.galaNumber);
@@ -301,8 +300,18 @@ export default function SimulatorClient() {
     return { contestant: c, isGrey, src, status, labelStatus };
   });
 
+  const scene: Scene = state.gala === 1 ? "entrada"
+    : !eventsSeen ? "salon"
+    : winnerAnnounced ? "plato"
+    : isFinalVoteToReveal ? "final"
+    : beforeWithdrawalPending ? "salon"
+    : isEvictionToReveal ? "expulsion"
+    : isWithdrawalPending || isRepechagePending ? "salon"
+    : hasNomsThisGala ? "nominacion" : "salon";
+
   return (
     <>
+      <SceneBackground scene={scene} />
       <ParticipantMenu participants={visibleRoster.map(({ contestant, labelStatus }) => ({
         id: contestant.id, name: contestant.name, gender: contestant.gender, status: labelStatus,
       }))} />
@@ -546,7 +555,10 @@ export default function SimulatorClient() {
               <div style={{ fontWeight: 900, marginBottom: 8 }}>Finalistas</div>
               <div className="row" style={{ justifyContent: "center" }}>
                 {finalists.map(id => (
-                  <span key={id} className="badge">🏁 <b>{idToName.get(id)}</b></span>
+                  <div key={id} style={{ textAlign: "center" }}>
+                    <span className="badge">🏁 <b>{idToName.get(id)}</b></span>
+                    <ContestantPortrait contestant={idToContestant.get(id)} size={62} />
+                  </div>
                 ))}
               </div>
             </>
