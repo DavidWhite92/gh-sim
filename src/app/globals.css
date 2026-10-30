@@ -447,3 +447,33 @@ html[data-theme="light"] .participantMenu li { border-color: #e5e7eb; }
 }
 html[data-theme="light"] .sceneBackground { --scene-overlay: rgba(255, 255, 255, .90); }
 .relationshipSort { border: 0; background: transparent; color: inherit; font: inherit; font-weight: inherit; cursor: pointer; padding: 4px; }
+
+/* Iluminación de expulsión y final, siempre detrás del contenido. */
+html[data-theme="light"] .sceneBackground[data-scene="expulsion"] {
+  --scene-overlay: rgba(240, 115, 120, .82);
+}
+html:not([data-theme="light"]) .sceneBackground[data-scene="expulsion"] {
+  --scene-overlay: rgba(85, 0, 8, .82);
+}
+.sceneSpotlights { position: absolute; inset: 0; overflow: hidden; }
+.sceneSpotlight {
+  position: absolute;
+  top: -30%;
+  left: -8%;
+  width: 45%;
+  height: 110%;
+  background: linear-gradient(to bottom, rgba(255,255,255,.42), rgba(255,255,255,.12) 65%, transparent);
+  clip-path: polygon(48% 0, 52% 0, 100% 100%, 0 100%);
+  filter: blur(14px);
+  transform-origin: 50% 0;
+  animation: sceneSpotlightSweep 7s ease-in-out infinite alternate;
+}
+.sceneSpotlight:nth-child(2) { left: 32%; animation-delay: -3s; animation-duration: 9s; }
+.sceneSpotlight:nth-child(3) { left: 66%; animation-delay: -5s; animation-duration: 8s; }
+@keyframes sceneSpotlightSweep {
+  from { transform: translateY(-18%) rotate(-14deg); opacity: .45; }
+  to { transform: translateY(28%) rotate(14deg); opacity: .8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sceneSpotlight { animation: none; opacity: .25; }
+}
