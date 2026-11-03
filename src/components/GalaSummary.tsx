@@ -17,6 +17,7 @@ export function GalaSummary({
   showProvisional,
   showLeaderSave,
   readOnly,
+  onNextGala,
 }: {
   state: GameState;
   gala: GalaRecord;
@@ -28,6 +29,7 @@ export function GalaSummary({
   showProvisional: boolean;
   showLeaderSave: boolean;
   readOnly?: boolean;
+  onNextGala?: () => void;
 }) {
   const idToName = new Map(state.contestants.map(c => [c.id, c.name]));
   const hasLeader = !!(gala.events.leader || gala.events.leaderSubtract);
@@ -239,6 +241,8 @@ export function GalaSummary({
           <div className="row" style={{ gap: 6 }}>{gala.finalNominees.map(id => <ContestantPortrait key={id} contestant={state.contestants.find(c => c.id === id)} size={31} align="left" />)}</div>
         </>
       )}
+
+      {!readOnly && showDefinitives && showTable && onNextGala && <button className="btn btnPrimary" onClick={onNextGala}>Siguiente gala</button>}
 
       {!showTable && (
         <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>

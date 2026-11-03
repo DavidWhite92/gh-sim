@@ -477,3 +477,29 @@ html:not([data-theme="light"]) .sceneBackground[data-scene="expulsion"] {
 @media (prefers-reduced-motion: reduce) {
   .sceneSpotlight { animation: none; opacity: .25; }
 }
+
+/* Opacidad configurable solo en las tarjetas de la temporada. */
+html[data-theme="light"] .container:has(.simulatorRoster) .card {
+  background: rgba(255, 255, 255, var(--season-light-alpha, .78));
+}
+html:not([data-theme="light"]) .container:has(.simulatorRoster) .card {
+  background: linear-gradient(180deg, rgba(255,255,255,var(--season-dark-alpha, .08)), rgba(255,255,255,calc(var(--season-dark-alpha, .08) * .75)));
+}
+.table .nameCell, .table tr.summaryRow td { background: #181c27; }
+html[data-theme="light"] .table .nameCell,
+html[data-theme="light"] .table tr.summaryRow td { background: #fff; }
+.themeControls { position: fixed; right: 16px; bottom: 16px; z-index: 99999; }
+.transparencyPopover {
+  position: absolute; right: 0; bottom: 100%;
+  width: min(280px, calc(100vw - 32px)); padding: 16px;
+  background: #181c27; color: #fff; border: 1px solid #626674; border-radius: 12px;
+  visibility: hidden; opacity: 0; pointer-events: none;
+}
+.themeControls:hover .transparencyPopover,
+.themeControls:focus-within .transparencyPopover { visibility: visible; opacity: 1; pointer-events: auto; }
+.transparencyPopover label { display: block; font-size: 13px; margin-bottom: 10px; }
+.transparencyPopover input { width: 100%; cursor: pointer; }
+html[data-theme="light"] .transparencyPopover { background: #fff; color: #111; border-color: #ccc; }
+
+html:not([data-theme="light"]) .table thead th:first-child { background: #181c27; }
+html[data-theme="light"] .table thead th:first-child { background: #fff; }

@@ -13,7 +13,7 @@ export function HouseEvents({ state, round, onContinue }: { state: GameState; ro
       <p className="muted">Lo ocurrido en la casa cambia la opinión del público y las relaciones entre los concursantes.</p>
       <div style={{ display: "grid", gap: 12 }}>
         {round.events.map((event, index) => (
-          <article key={index} className="houseEvent" style={{ borderLeftColor: event.positive ? "#36a879" : "#d58363" }}>
+          <article key={index} className="houseEvent" style={{ borderLeftColor: event.positive ? "#36a879" : "#e53935" }}>
             <strong>{event.positive ? "↑" : "↓"} {event.title}</strong>
             <div style={{ marginTop: 6, fontWeight: 700 }}>{event.participantIds.map(id => names.get(id)).join(" · ")}</div>
             <div className="row" style={{ gap: 6 }}>{event.participantIds.map(id => <ContestantPortrait key={id} contestant={state.contestants.find(c => c.id === id)} size={31} align="left" />)}</div>

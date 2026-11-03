@@ -440,7 +440,7 @@ export default function SimulatorClient() {
 
           <div className="spacer" />
 
-          {canCelebrate && (
+          {canCelebrate && state.gala === 1 && (
             <button className="btn btnPrimary" onClick={onCelebrate}>
               {isFinalReady ? "Celebrar final" : "Celebrar gala"}
             </button>
@@ -660,6 +660,8 @@ export default function SimulatorClient() {
           <h2 style={{ marginTop: 0 }}>Recta Final</h2>
           <p>Se acabaron las nominaciones entre compañeros. El público vota para salvar y la persona con menor porcentaje saldrá en la próxima gala. La popularidad sigue influyendo en el apoyo del público.</p>
           <div className="row">{lastGala!.finalNominees.map(id => <span className="badge" key={id}>{idToName.get(id)}</span>)}</div>
+          <div className="row" style={{ gap: 6 }}>{lastGala!.finalNominees.map(id => <ContestantPortrait key={id} contestant={idToContestant.get(id)} size={31} align="left" />)}</div>
+          {canCelebrate && <button className="btn btnPrimary" onClick={onCelebrate}>Siguiente gala</button>}
           {!showTable && <button className="btn btnPrimary" style={{ marginTop: 14 }} onClick={() => { setShowDefinitives(true); setShowTable(true); }}>Abrir votación para salvar</button>}
         </section>
       )}
@@ -672,6 +674,7 @@ export default function SimulatorClient() {
           revealCount={revealNomCount}
           onNextReveal={() => revealNominations(revealNomCount + 1)}
           onRevealAll={() => revealNominations(totalNoms)}
+          onNextGala={canCelebrate ? onCelebrate : undefined}
           showProvisional={canShowProvisional}
           showLeaderSave={showLeaderSave}
           showDefinitives={showDefinitives}
@@ -700,6 +703,10 @@ export default function SimulatorClient() {
             Tras revelar los privilegios se muestran los nominados definitivos.
           </div>
         </section>
+      )}
+
+      {canCelebrate && state.gala !== 1 && !hasNomsThisGala && !hasPublicNomsThisGala && (
+        <div><button className="btn btnPrimary" onClick={onCelebrate}>{isFinalReady ? "Celebrar final" : "Siguiente gala"}</button></div>
       )}
 
       {/* TABLA: solo cuando ya se revelaron los definitivos */}

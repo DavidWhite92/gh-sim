@@ -14,11 +14,14 @@ const STORAGE_KEY = 'gh_theme';
  */
 export default function ThemeGate({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark');
+  const [transparency, setTransparency] = useState({ light: 22, dark: 92 });
   const [hydrated, setHydrated] = useState(false);
   const [showChooser, setShowChooser] = useState(false);
 
   useEffect(() => {
     try {
+      const savedTransparency = JSON.parse(localStorage.getItem('gh_transparency') || 'null');
+      if (savedTransparency && ['light', 'dark'].every(key => typeof savedTransparency[key] === 'number' && savedTransparency[key] >= 0 && savedTransparency[key] <= 100)) setTransparency(savedTransparency);
       const saved = (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? null;
       if (saved === 'dark' || saved === 'light') {
         setTheme(saved);
@@ -45,6 +48,13 @@ export default function ThemeGate({ children }: { children: React.ReactNode }) {
     } catch {}
   }, [theme, hydrated]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    document.documentElement.style.setProperty('--season-light-alpha', String(1 - transparency.light / 100));
+    document.documentElement.style.setProperty('--season-dark-alpha', String(1 - transparency.dark / 100));
+    try { localStorage.setItem('gh_transparency', JSON.stringify(transparency)); } catch {}
+  }, [transparency, hydrated]);
+
   const toggle = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   const buttonLabel = useMemo(() => {
@@ -57,16 +67,19 @@ export default function ThemeGate({ children }: { children: React.ReactNode }) {
     <>
       {children}
 
-      {/* Floating toggle - always visible */}
+      {/* Hover/focus reveals the slider; clicking the button still switches theme. */}
+      <div className="themeControls">
+      <div className="transparencyPopover">
+        <label htmlFor="seasonTransparency">Transparencia · {theme === 'light' ? 'Claro' : 'Noche'}: {transparency[theme]} %</label>
+        <input id="seasonTransparency" type="range" min="0" max="100" value={transparency[theme]}
+          onChange={event => setTransparency(previous => ({ ...previous, [theme]: Number(event.target.value) }))} />
+      </div>
       <button
         type="button"
         onClick={toggle}
         aria-label="Cambiar tema"
         style={{
-          position: 'fixed',
-          right: 16,
-          bottom: 16,
-          zIndex: 99999,
+          position: 'relative',
           padding: '10px 12px',
           borderRadius: 9999,
           border: '1px solid rgba(0,0,0,0.15)',
@@ -81,6 +94,8 @@ export default function ThemeGate({ children }: { children: React.ReactNode }) {
       >
         {buttonLabel}
       </button>
+
+      </div>
 
       {/* First-time chooser */}
       {showChooser && (
