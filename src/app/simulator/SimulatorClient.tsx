@@ -456,7 +456,10 @@ export default function SimulatorClient() {
             </div>
             <div className="row" style={{ marginTop: 8 }}>
               {state.contestants.map(c => (
-                <span key={c.id} className="badge">👤 <b>{c.name}</b></span>
+                <div key={c.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <span className="badge">👤 <b>{c.name}</b></span>
+                  <ContestantPortrait contestant={c} size={31} compact />
+                </div>
               ))}
             </div>
           </>

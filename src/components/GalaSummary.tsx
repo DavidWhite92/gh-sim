@@ -152,14 +152,17 @@ export function GalaSummary({
         {gala.nominations.slice(0, revealCount).map(n => {
           const entries = Object.entries(n.points).sort((a, b) => b[1] - a[1]);
           return (
-            <div key={n.fromId} className="badge" style={{ borderRadius: 14 }}>
-              <b>{idToName.get(n.fromId)}</b>:{" "}
-              {entries.map(([toId, pts], i) => (
+            <div key={n.fromId} className="badge" style={{ borderRadius: 14, display: "flex", alignItems: "center", gap: 8 }}>
+              <span title={idToName.get(n.fromId)} style={{ flexShrink: 0 }}>
+                <ContestantPortrait contestant={state.contestants.find(c => c.id === n.fromId)} size={31} compact />
+                {!state.contestants.some(c => c.id === n.fromId && (c.photoUrl || c.seasonId)) && <b>{idToName.get(n.fromId)}</b>}
+              </span>
+              <span>{entries.map(([toId, pts], i) => (
                 <span key={toId}>
                   {i > 0 ? " · " : ""}
                   {idToName.get(toId)} ({pts})
                 </span>
-              ))}
+              ))}</span>
             </div>
           );
         })}
