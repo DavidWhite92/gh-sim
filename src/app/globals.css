@@ -483,7 +483,7 @@ html[data-theme="light"] .container:has(.simulatorRoster) .card {
   background: rgba(255, 255, 255, var(--season-light-alpha, .78));
 }
 html:not([data-theme="light"]) .container:has(.simulatorRoster) .card {
-  background: linear-gradient(180deg, rgba(255,255,255,var(--season-dark-alpha, .08)), rgba(255,255,255,calc(var(--season-dark-alpha, .08) * .75)));
+  background: rgba(24, 28, 39, var(--season-dark-alpha, .08));
 }
 .table .nameCell, .table tr.summaryRow td { background: #181c27; }
 html[data-theme="light"] .table .nameCell,
@@ -503,3 +503,13 @@ html[data-theme="light"] .transparencyPopover { background: #fff; color: #111; b
 
 html:not([data-theme="light"]) .table thead th:first-child { background: #181c27; }
 html[data-theme="light"] .table thead th:first-child { background: #fff; }
+
+/* El recorrido completo permanece opaco, independientemente del deslizador. */
+html:not([data-theme="light"]) .container:has(.simulatorRoster) .card.journeyTable,
+html:not([data-theme="light"]) .container .journeyTable .table,
+html:not([data-theme="light"]) .container .journeyTable th,
+html:not([data-theme="light"]) .container .journeyTable td { background-color: #181c27; }
+html[data-theme="light"] .container:has(.simulatorRoster) .card.journeyTable,
+html[data-theme="light"] .container .journeyTable .table,
+html[data-theme="light"] .container .journeyTable th,
+html[data-theme="light"] .container .journeyTable td { background-color: #fff; }

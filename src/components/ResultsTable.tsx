@@ -151,7 +151,7 @@ export function ResultsTable({ state }: { state: GameState }) {
   const finalVote = (state.publicVotes ?? []).find((v: any) => (v.kind ?? "") === "final");
 
   return (
-    <section className="card">
+    <section className="card journeyTable">
       <div className="cardPad">
         <div className="row">
           <div style={{ fontWeight: 900 }}>Recorrido por galas</div>

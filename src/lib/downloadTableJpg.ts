@@ -3,10 +3,9 @@ export async function downloadTableJpg(table: HTMLTableElement, filename: string
   await document.fonts.ready;
   await Promise.all(Array.from(table.querySelectorAll("img")).map(img => img.decode().catch(() => undefined)));
   const bounds = table.getBoundingClientRect();
-  const padding = 20;
-  const headingHeight = 40;
+  const padding = 0;
   const width = Math.ceil(bounds.width + padding * 2);
-  const height = Math.ceil(bounds.height + padding * 2 + headingHeight);
+  const height = Math.ceil(bounds.height + padding * 2);
   // Keep large exports within practical mobile canvas limits.
   const scale = Math.min(2, 8192 / width, 8192 / height, Math.sqrt(16000000 / (width * height)));
   const canvas = document.createElement("canvas");
@@ -15,15 +14,10 @@ export async function downloadTableJpg(table: HTMLTableElement, filename: string
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No se pudo crear la imagen.");
   ctx.scale(scale, scale);
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = getComputedStyle(table).backgroundColor;
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = "#111";
-  ctx.font = "bold 20px system-ui, sans-serif";
-  ctx.textBaseline = "top";
-  ctx.fillText("Resultado Galas", padding, padding);
-
   const offsetX = padding - bounds.left;
-  const offsetY = padding + headingHeight - bounds.top;
+  const offsetY = padding - bounds.top;
   for (const row of Array.from(table.rows)) {
     for (const cell of Array.from(row.cells)) {
       const rect = cell.getBoundingClientRect();
@@ -68,7 +62,7 @@ export async function downloadTableJpg(table: HTMLTableElement, filename: string
         const textRect = range.getBoundingClientRect();
         if (!textRect.width || !textRect.height) continue;
         ctx.font = `${textStyle.fontStyle} ${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
-        ctx.fillStyle = "#111";
+        ctx.fillStyle = textStyle.color;
         ctx.textBaseline = "alphabetic";
         const metrics = ctx.measureText(node.textContent);
         const ascent = metrics.fontBoundingBoxAscent ?? parseFloat(textStyle.fontSize) * 0.8;
