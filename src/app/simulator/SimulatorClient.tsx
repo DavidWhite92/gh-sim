@@ -467,7 +467,7 @@ export default function SimulatorClient() {
           <>
             <hr className="soft" />
             <div className="row">
-              <div style={{ fontWeight: 900 }}>Nominados (pasan a votación)</div>
+              <div style={{ fontWeight: 900 }}>Nominados</div>
               <span className="muted">{hasPublicNomsThisGala ? "El público vota para salvar; sale quien recibe menos apoyo" : "Se expulsa en la próxima gala"}</span>
             </div>
             <div className="row" style={{ marginTop: 8 }}>
@@ -686,7 +686,7 @@ export default function SimulatorClient() {
       {eventsSeen && !isWithdrawalPending && !isRepechagePending && hasNomsThisGala && hasLeaderThisGala && !isEvictionToReveal && revealNomCount >= totalNoms && !showLeaderSave && (
         <section className="card cardPad">
           <div className="row">
-            <div style={{ fontWeight: 900 }}>Acción del líder</div>
+            <div style={{ fontWeight: 900 }}>Privilegio del Líder</div>
             <div className="spacer" />
             <button
               className="btn btnPrimary"
@@ -700,7 +700,9 @@ export default function SimulatorClient() {
             </button>
           </div>
           <div className="muted" style={{ marginTop: 8 }}>
-            Tras revelar los privilegios se muestran los nominados definitivos.
+            {lastGala?.events.leaderSubtract
+              ? `Como privilegio, el líder puede ${lastGala.nominationMode === "positive" ? "sumar" : "restar"} ${state.leaderMode === "subtract1" ? "1 punto" : "3 puntos"} a uno de los nominados provisionales. Conoce quiénes están nominados, pero no cuántos puntos ha recibido cada uno.`
+              : "Como privilegio, el líder puede quitar de la lista a uno de los nominados."}
           </div>
         </section>
       )}

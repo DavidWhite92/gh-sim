@@ -96,7 +96,6 @@ export function GalaSummary({
     <section className="card cardPad">
       <div className="row">
         <div style={{ fontWeight: 900 }}>Gala {gala.galaNumber} · {gala.nominations.length ? "Nominaciones" : "Resumen"}</div>
-        <span className="badge muted">Los provisionales solo aparecen si hay líder</span>
         <div className="spacer" />
         {!readOnly && revealCount < gala.nominations.length && (
           <>
@@ -130,13 +129,13 @@ export function GalaSummary({
         )}
         {gala.events.leader && (
           <span className="badge">
-            👑 Líder Salva: <b>{idToName.get(gala.events.leader!.leaderId)}</b>
+            👑 Líder: <b>{idToName.get(gala.events.leader!.leaderId)}</b>
           </span>
         )}
       </div>
 
       {gala.events.leaderSubtract && <div className="row" style={{ marginTop: 8 }}>
-        <span className="badge">👑 Líder {gala.events.leaderSubtract.after > gala.events.leaderSubtract.before ? "Suma" : "Resta"} {Math.abs(gala.events.leaderSubtract.after - gala.events.leaderSubtract.before)}: <b>{idToName.get(gala.events.leaderSubtract.leaderId)}</b></span>
+        <span className="badge">👑 Líder: <b>{idToName.get(gala.events.leaderSubtract.leaderId)}</b></span>
       </div>}
 
       <hr className="soft" />
@@ -169,7 +168,6 @@ export function GalaSummary({
       <hr className="soft" />
       <div className="row">
         <div style={{ fontWeight: 900 }}>Conteo total</div>
-        <span className="muted">(se actualiza mientras revelas nominaciones)</span>
       </div>
       <div className="row" style={{ marginTop: 8 }}>
         {sorted.map(([id, pts]) => (
@@ -229,7 +227,6 @@ export function GalaSummary({
           <hr className="soft" />
           <div className="row">
             <div style={{ fontWeight: 900 }}>Nominados definitivos</div>
-            <span className="muted">(los que pasan a votación)</span>
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             {gala.finalNominees.map(id => (
@@ -244,11 +241,7 @@ export function GalaSummary({
 
       {!readOnly && showDefinitives && showTable && onNextGala && <button className="btn btnPrimary" onClick={onNextGala}>Siguiente gala</button>}
 
-      {!showTable && (
-        <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
-          La tabla se mostrará cuando se revelen los nominados definitivos.
-        </div>
-      )}
+
     </section>
   );
 }

@@ -513,3 +513,15 @@ html[data-theme="light"] .container:has(.simulatorRoster) .card.journeyTable,
 html[data-theme="light"] .container .journeyTable .table,
 html[data-theme="light"] .container .journeyTable th,
 html[data-theme="light"] .container .journeyTable td { background-color: #fff; }
+
+/* El inicio comparte el ajuste de transparencia de cada tema. */
+html[data-theme="light"] .homePage .contestantPicker {
+  --picker-surface: rgba(255,255,255,var(--season-light-alpha, .78));
+  --picker-card: rgba(255,255,255,var(--season-light-alpha, .78));
+}
+html:not([data-theme="light"]) .homePage .contestantPicker {
+  --picker-surface: rgba(24,28,39,var(--season-dark-alpha, .08));
+  --picker-card: rgba(24,28,39,var(--season-dark-alpha, .08));
+}
+html[data-theme="light"] .homePage .card { background: rgba(255,255,255,var(--season-light-alpha, .78)); }
+html:not([data-theme="light"]) .homePage .card { background: rgba(24,28,39,var(--season-dark-alpha, .08)); }

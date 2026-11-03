@@ -134,7 +134,7 @@ const SEASONS: SeasonDef[] = [
     label: "GH 5",
     contestants: [
       { name: "Nuria N.", file: "Nuria.gif", gender: "F" },
-      { name: "David G.", file: "David Gallardo.gif", gender: "M" },
+      { name: "David", file: "David Gallardo.gif", gender: "M" },
       { name: "Julián", file: "Julian.gif", gender: "M" },
       { name: "Ainhoa", file: "Ainhoa.gif", gender: "F" },
       { name: "Denis", file: "Denis.gif", gender: "M" },
@@ -332,7 +332,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Ochoa", file: "Ochoa.gif", gender: "F" },
       { name: "Verónica", file: "Veronicagh13.gif", gender: "F" },
       { name: "Mary Joy", file: "MaryJoy.gif", gender: "F" },
-      { name: "David", file: "Davidgh13.gif", gender: "M" },
+      { name: "David G.", file: "Davidgh13.gif", gender: "M" },
       { name: "Aris", file: "Aris.gif", gender: "M" },
       { name: "Azucena", file: "Azucena.gif", gender: "F" },
       { name: "Zulema", file: "Zulema.gif", gender: "F" },
@@ -891,7 +891,6 @@ export function ContestantPicker({
           <button className="btn" aria-pressed={!pickingReserves} onClick={() => setSelectionMode("roster")}>Elegir participantes</button>
           <button className="btn" aria-pressed={pickingReserves} onClick={() => setSelectionMode("reserves")}>Elegir reservas</button>
           <b>{pickingReserves ? "Añadiendo a reservas (máx. 10)" : "Añadiendo al reparto (máx. 25)"}</b>
-          <span style={{ opacity: 0.7, fontSize: 13 }}>(abre/cierra y clic para añadir/quitar)</span>
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
