@@ -409,8 +409,9 @@ html[data-theme="light"] .participantMenu li { border-color: #e5e7eb; }
   width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh - 32px);
   margin: auto 16px auto auto; padding: 20px; overflow-y: auto;
   border: 1px solid var(--picker-border); border-radius: 18px;
-  background: var(--picker-surface); color: var(--picker-text); box-shadow: var(--shadow);
+  background: #151e2d; color: var(--picker-text); box-shadow: var(--shadow);
 }
+html[data-theme="light"] .seasonSettings { background: #fff; }
 .seasonSettings::backdrop { background: rgb(0 0 0 / .5); }
 .seasonSettings > .row { justify-content: space-between; }
 .seasonSettings h2 { font-size: 20px; margin: 0; }
