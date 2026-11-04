@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { MusicProvider } from "@/components/MusicPlayer";
 import ThemeGate from "./ThemeGate";
 
 export const metadata: Metadata = {
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeGate>
+          <MusicProvider>
           <div className="bg" />
           <div className="appShell">
             <header className="topbar">
@@ -80,6 +82,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span>© {new Date().getFullYear()} · Simulador GH</span>
             </footer>
           </div>
+          </MusicProvider>
         </ThemeGate>
       </body>
     </html>

@@ -525,3 +525,8 @@ html:not([data-theme="light"]) .homePage .contestantPicker {
 }
 html[data-theme="light"] .homePage .card { background: rgba(255,255,255,var(--season-light-alpha, .78)); }
 html:not([data-theme="light"]) .homePage .card { background: rgba(24,28,39,var(--season-dark-alpha, .08)); }
+
+.musicControls { position: fixed; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); z-index: 20; display: flex; align-items: center; gap: 4px; padding: 3px 8px 3px 3px; border-radius: 22px; background: #181c27; color: white; border: 1px solid #777; }
+.musicControls button { background: transparent; color: inherit; border: 0; font-size: 20px; width: 36px; height: 36px; cursor: pointer; }
+.musicControls input { width: clamp(48px, 9vw, 90px); }
+html[data-theme="light"] .musicControls { background: #fff; color: #181c27; }
