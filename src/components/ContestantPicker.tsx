@@ -564,7 +564,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Ylenia", file: "Yleniaghvip3.gif", gender: "F" },
       { name: "Ares", file: "Aresghvip3.gif", gender: "F" },
       { name: "Israel L.", file: "Israrlghvip3.gif", gender: "M" },
-      { name: "Víctor", file: "Victorghvip3.gif", gender: "M" },
+      { name: "Víctor", file: "Víctorghvip3.gif", gender: "M" },
       { name: "Laura C.", file: "Lauraghvip3.gif", gender: "F" },
       { name: "Kiko R.", file: "Kikoghvip3.gif", gender: "M" },
       { name: "Sandro", file: "Sandroghvip3.gif", gender: "M" },
