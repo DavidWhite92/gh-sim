@@ -634,6 +634,27 @@ const SEASONS: SeasonDef[] = [
       { name: "Oriana", file: "Orianaghvip6.gif", gender: "F" },
     ],
   },
+  {
+    id: "ghvip7",
+    label: "GH VIP 7",
+    contestants: [
+      { name: "Alba", file: "Albaghvip7.gif", gender: "F" },
+      { name: "Mila", file: "Milaghvip7.gif", gender: "F" },
+      { name: "Noemí S.", file: "Noemíghvip7.gif", gender: "F" },
+      { name: "Estela", file: "Estelaghvip7.gif", gender: "F" },
+      { name: "A. David", file: "AntonioDavidghvip7.gif", gender: "M" },
+      { name: "Hugo C.", file: "Hugoghvip7.gif", gender: "M" },
+      { name: "Benita", file: "Benitaghvip7.gif", gender: "F" },
+      { name: "Gianmarco", file: "Gianmarcoghvip7.gif", gender: "M" },
+      { name: "El Cejas", file: "Cejasghvip7.gif", gender: "M" },
+      { name: "Irene J.", file: "Ireneghvip7.gif", gender: "F" },
+      { name: "Kiko J.", file: "Kikoghvip7.gif", gender: "M" },
+      { name: "Dinio", file: "Dinioghvip7.gif", gender: "M" },
+      { name: "Nuria M.", file: "Nuriaghvip7.gif", gender: "F" },
+      { name: "Anabel", file: "Anabelghvip7.gif", gender: "F" },
+    ],
+  },
+
 ];
 
 
