@@ -531,3 +531,5 @@ html:not([data-theme="light"]) .homePage .card { background: rgba(24,28,39,var(-
 .musicControls button { background: transparent; color: inherit; border: 0; font-size: 20px; width: 36px; height: 36px; cursor: pointer; }
 .musicControls input { width: clamp(48px, 9vw, 90px); }
 html[data-theme="light"] .musicControls { background: #fff; color: #181c27; }
+
+html[data-theme="light"] .contestantPicker { --random-filter-bg: #fff; }

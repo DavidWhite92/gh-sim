@@ -686,6 +686,8 @@ export function ContestantPicker({
 }: {
   onStart: (contestants: ContestantSetup[], seed: number, options: GameOptions) => void;
 }) {
+  const [randomCategories, setRandomCategories] = useState({ gh: true, ghvip: true });
+  const [showRandomFilters, setShowRandomFilters] = useState(false);
   const [seasonOptions, setSeasonOptions] = useState<GameOptions>({});
   const [reserves, setReserves] = useState<ContestantSetup[]>([]);
   const [selectionMode, setSelectionMode] = useState<"roster" | "reserves">("roster");
@@ -853,26 +855,15 @@ export function ContestantPicker({
     setSelected((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  const randomCandidates = SEASONS
+    .filter(s => randomCategories[s.id.startsWith("ghvip") ? "ghvip" : "gh"])
+    .flatMap(s => s.contestants.map(p => makeSetupFromSeasonPerson(s.id, p)))
+    .filter(x => !selectedKeySet.has(`${x.seasonId}::${x.name}`) && !reserveKeySet.has(`${x.seasonId}::${x.name}`));
+
   function pickRandom(target: "roster" | "reserves" = "roster") {
     if (target === "roster" ? selected.length >= 25 : reserves.length >= 10) return;
-
-    const pool: ContestantSetup[] = [];
-    for (const s of SEASONS) {
-      for (const p of s.contestants) {
-        pool.push(makeSetupFromSeasonPerson(s.id, p));
-      }
-    }
-    for (const c of customList) {
-      pool.push({
-        name: c.name,
-        seasonId: CUSTOM_SEASON_ID,
-        photoUrl: c.photoUrl,
-        gender: normalizeGender(c.gender),
-      });
-    }
-
-    const available = pool.filter((x) => !selectedKeySet.has(`${x.seasonId ?? ""}::${x.name}`) && !reserveKeySet.has(`${x.seasonId ?? ""}::${x.name}`));
-    if (available.length === 0) return;
+    const available = randomCandidates;
+    if (!available.length) return;
 
     const chosen = available[Math.floor(Math.random() * available.length)];
     (target === "reserves" ? setReserves : setSelected)(prev => [...prev, chosen]);
@@ -889,6 +880,161 @@ export function ContestantPicker({
   const matchCount = matchingSeasons.reduce(
     (count, s) => count + (s.id === CUSTOM_SEASON_ID ? matchingCustoms.length : s.contestants.length), 0
   );
+  const renderSeason = (s: SeasonDef) => {
+            const seasonSelectedCount = countSelectedForSeason(s.id);
+            const total = s.id === CUSTOM_SEASON_ID ? matchingCustoms.length : s.contestants.length;
+
+            return (
+              <details
+                key={s.id + (query ? "-search" : "-browse")}
+                open={!!query || s.id === CUSTOM_SEASON_ID}
+                style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 10, background: "var(--picker-card)" }}
+              >
+                <summary style={{ cursor: "pointer", fontWeight: 900 }}>
+                  {s.label} <span style={{ opacity: 0.7, fontWeight: 700 }}>({total} · seleccionados: {seasonSelectedCount})</span>
+                </summary>
+
+                <div className="contestantGrid"
+                  style={{
+                    marginTop: 10,
+                    display: "grid",
+
+                    gap: 10,
+                  }}
+                >
+                  {s.id !== CUSTOM_SEASON_ID &&
+                    s.contestants.map((p) => {
+                      const setup = makeSetupFromSeasonPerson(s.id, p);
+                      const key = `${setup.seasonId ?? ""}::${setup.name}`;
+                      const picked = pickedKeys.has(key);
+                      const blocked = otherKeys.has(key);
+
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => togglePick(setup)}
+                          aria-pressed={picked}
+                          disabled={blocked || (!picked && pickLimitReached)}
+                          style={{
+                            display: "flex",
+                            gap: 10,
+                            alignItems: "center",
+                            textAlign: "left",
+                            padding: 10,
+                            borderRadius: 14,
+                            border: "1px solid var(--picker-border)",
+                            background: picked ? "var(--picker-selected)" : "var(--picker-card)",
+                            color: "var(--picker-text)",
+                            cursor: blocked || (!picked && pickLimitReached) ? "not-allowed" : "pointer",
+                            opacity: blocked || (!picked && pickLimitReached) ? 0.6 : 1,
+                          }}
+                          title={blocked ? "Ya está en el otro grupo" : picked ? "Quitar" : pickingReserves ? "Añadir a reservas" : "Añadir al reparto"}
+                        >
+                          <div
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 12,
+                              overflow: "hidden",
+                              background: "var(--picker-image)",
+                              border: "1px solid var(--picker-border)",
+                              flex: "0 0 auto",
+                            }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={setup.photoUrl}
+                              alt={p.name}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              onError={(e) => {
+                                const img = e.currentTarget;
+                                if (img.dataset.fallbackApplied) return;
+                                img.dataset.fallbackApplied = "1";
+                                if (setup.photoUrl?.toLowerCase().endsWith(".jpg")) {
+                                  img.src = setup.photoUrl.replace(/\.jpg$/i, ".png");
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <div style={{ display: "grid", gap: 2 }}>
+                            <div style={{ fontWeight: 850 }}>
+                              {p.name} {picked ? "✓" : ""}
+                            </div>
+                            <div style={{ fontSize: 12, opacity: picked ? 0.85 : 0.7 }}>{s.label}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  {s.id === CUSTOM_SEASON_ID &&
+                    matchingCustoms.map((c) => {
+                      const setup: ContestantSetup = {
+                        name: c.name,
+                        seasonId: CUSTOM_SEASON_ID,
+                        photoUrl: c.photoUrl,
+                        gender: normalizeGender(c.gender),
+                      };
+                      const key = `${setup.seasonId ?? ""}::${setup.name}`;
+                      const picked = pickedKeys.has(key);
+                      const blocked = otherKeys.has(key);
+
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => togglePick(setup)}
+                          aria-pressed={picked}
+                          disabled={blocked || (!picked && pickLimitReached)}
+                          style={{
+                            display: "flex",
+                            gap: 10,
+                            alignItems: "center",
+                            textAlign: "left",
+                            padding: 10,
+                            borderRadius: 14,
+                            border: "1px solid var(--picker-border)",
+                            background: picked ? "var(--picker-selected)" : "var(--picker-card)",
+                            color: "var(--picker-text)",
+                            cursor: blocked || (!picked && pickLimitReached) ? "not-allowed" : "pointer",
+                            opacity: blocked || (!picked && pickLimitReached) ? 0.6 : 1,
+                          }}
+                          title={blocked ? "Ya está en el otro grupo" : picked ? "Quitar" : pickingReserves ? "Añadir a reservas" : "Añadir al reparto"}
+                        >
+                          <div
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 12,
+                              overflow: "hidden",
+                              background: "var(--picker-image)",
+                              border: "1px solid var(--picker-border)",
+                              flex: "0 0 auto",
+                            }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={setup.photoUrl} alt={setup.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          </div>
+
+                          <div style={{ display: "grid", gap: 2 }}>
+                            <div style={{ fontWeight: 850 }}>
+                              {setup.name} {picked ? "✓" : ""}
+                            </div>
+                            <div style={{ fontSize: 12, opacity: picked ? 0.85 : 0.7 }}>Custom</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+
+                {s.id === CUSTOM_SEASON_ID && customList.length === 0 && (
+                  <div style={{ marginTop: 10, opacity: 0.75 }}>Aún no tienes concursantes custom.</div>
+                )}
+                {s.id !== CUSTOM_SEASON_ID && s.contestants.length === 0 && (
+                  <div style={{ marginTop: 10, opacity: 0.75 }}>Esta edición aún no tiene concursantes.</div>
+                )}
+              </details>
+            );
+  };
+
   return (
     <div className="contestantPicker" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14, maxWidth: 980 }}>
       <h1 style={{ margin: "12px 0", lineHeight: 0 }}>
@@ -905,7 +1051,7 @@ export function ContestantPicker({
 
           <button
             onClick={() => pickRandom("roster")}
-            disabled={selected.length >= 25}
+            disabled={selected.length >= 25 || !randomCandidates.length}
             style={{
               padding: "12px 16px",
               borderRadius: 12,
@@ -918,6 +1064,20 @@ export function ContestantPicker({
           >
             Random
           </button>
+          <div style={{ position: "relative" }}>
+            <button type="button" className="btn" aria-label="Filtrar selección aleatoria" title="Filtrar selección aleatoria" aria-expanded={showRandomFilters} aria-controls="random-category-filters" onClick={() => setShowRandomFilters(value => !value)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2V12Z" /></svg>
+            </button>
+            {showRandomFilters && <fieldset id="random-category-filters" onKeyDown={event => { if (event.key === "Escape") setShowRandomFilters(false); }} style={{ position: "absolute", top: "100%", left: 0, zIndex: 10, width: 210, maxWidth: "calc(100vw - 32px)", padding: 14, borderRadius: 12, border: "1px solid var(--picker-border)", background: "var(--random-filter-bg, #151e2d)", color: "var(--picker-text)", margin: 0 }}>
+              <legend style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clipPath: "inset(50%)" }}>Categorías aleatorias</legend>
+              {(["gh", "ghvip"] as const).map(category => <label key={category} style={{ display: "flex", gap: 8, padding: 6 }}>
+                <input type="checkbox" checked={randomCategories[category]} onChange={event => setRandomCategories(previous => ({ ...previous, [category]: event.target.checked }))} />
+                {category === "gh" ? "GH" : "GHVIP"}
+              </label>)}
+              <small>Se aplica a participantes y reservas.</small>
+              {!randomCategories.gh && !randomCategories.ghvip && <p role="status">Activa una categoría para usar Random.</p>}
+            </fieldset>}
+          </div>
 
           <button
             disabled={!canStart}
@@ -948,7 +1108,7 @@ export function ContestantPicker({
         <p style={{ fontSize: 13, opacity: 0.8 }}>Para elegir a alguien concreto, ve a Concursantes, selecciona «Elegir reservas» y luego elige a tus elegidos para añadirlos como reservas.</p>
         <div className="row" style={{ marginBottom: 10 }}>
           <strong>Reservas: {reserves.length}/10</strong>
-          <button className="btn" onClick={() => pickRandom("reserves")} disabled={reserves.length >= 10}>Random reservas</button>
+          <button className="btn" onClick={() => pickRandom("reserves")} disabled={reserves.length >= 10 || !randomCandidates.length}>Random reservas</button>
         </div>
         <div className="contestantGrid">
           {reserves.map((c, i) => <button
@@ -1055,161 +1215,16 @@ export function ContestantPicker({
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          {matchingSeasons.map((s, idx) => {
-            const seasonSelectedCount = countSelectedForSeason(s.id);
-            const total = s.id === CUSTOM_SEASON_ID ? matchingCustoms.length : s.contestants.length;
-
-            return (
-              <details
-                key={s.id + (query ? "-search" : "-browse")}
-                open={!!query || idx === 0 || s.id === CUSTOM_SEASON_ID}
-                style={{ border: "1px solid var(--picker-border)", borderRadius: 16, padding: 10, background: "var(--picker-card)" }}
-              >
-                <summary style={{ cursor: "pointer", fontWeight: 900 }}>
-                  {s.label} <span style={{ opacity: 0.7, fontWeight: 700 }}>({total} · seleccionados: {seasonSelectedCount})</span>
-                </summary>
-
-                <div className="contestantGrid"
-                  style={{
-                    marginTop: 10,
-                    display: "grid",
-
-                    gap: 10,
-                  }}
-                >
-                  {s.id !== CUSTOM_SEASON_ID &&
-                    s.contestants.map((p) => {
-                      const setup = makeSetupFromSeasonPerson(s.id, p);
-                      const key = `${setup.seasonId ?? ""}::${setup.name}`;
-                      const picked = pickedKeys.has(key);
-                      const blocked = otherKeys.has(key);
-
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => togglePick(setup)}
-                          aria-pressed={picked}
-                          disabled={blocked || (!picked && pickLimitReached)}
-                          style={{
-                            display: "flex",
-                            gap: 10,
-                            alignItems: "center",
-                            textAlign: "left",
-                            padding: 10,
-                            borderRadius: 14,
-                            border: "1px solid var(--picker-border)",
-                            background: picked ? "var(--picker-selected)" : "var(--picker-card)",
-                            color: "var(--picker-text)",
-                            cursor: blocked || (!picked && pickLimitReached) ? "not-allowed" : "pointer",
-                            opacity: blocked || (!picked && pickLimitReached) ? 0.6 : 1,
-                          }}
-                          title={blocked ? "Ya está en el otro grupo" : picked ? "Quitar" : pickingReserves ? "Añadir a reservas" : "Añadir al reparto"}
-                        >
-                          <div
-                            style={{
-                              width: 44,
-                              height: 44,
-                              borderRadius: 12,
-                              overflow: "hidden",
-                              background: "var(--picker-image)",
-                              border: "1px solid var(--picker-border)",
-                              flex: "0 0 auto",
-                            }}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={setup.photoUrl}
-                              alt={p.name}
-                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                              onError={(e) => {
-                                const img = e.currentTarget;
-                                if (img.dataset.fallbackApplied) return;
-                                img.dataset.fallbackApplied = "1";
-                                if (setup.photoUrl?.toLowerCase().endsWith(".jpg")) {
-                                  img.src = setup.photoUrl.replace(/\.jpg$/i, ".png");
-                                }
-                              }}
-                            />
-                          </div>
-
-                          <div style={{ display: "grid", gap: 2 }}>
-                            <div style={{ fontWeight: 850 }}>
-                              {p.name} {picked ? "✓" : ""}
-                            </div>
-                            <div style={{ fontSize: 12, opacity: picked ? 0.85 : 0.7 }}>{s.label}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                  {s.id === CUSTOM_SEASON_ID &&
-                    matchingCustoms.map((c) => {
-                      const setup: ContestantSetup = {
-                        name: c.name,
-                        seasonId: CUSTOM_SEASON_ID,
-                        photoUrl: c.photoUrl,
-                        gender: normalizeGender(c.gender),
-                      };
-                      const key = `${setup.seasonId ?? ""}::${setup.name}`;
-                      const picked = pickedKeys.has(key);
-                      const blocked = otherKeys.has(key);
-
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => togglePick(setup)}
-                          aria-pressed={picked}
-                          disabled={blocked || (!picked && pickLimitReached)}
-                          style={{
-                            display: "flex",
-                            gap: 10,
-                            alignItems: "center",
-                            textAlign: "left",
-                            padding: 10,
-                            borderRadius: 14,
-                            border: "1px solid var(--picker-border)",
-                            background: picked ? "var(--picker-selected)" : "var(--picker-card)",
-                            color: "var(--picker-text)",
-                            cursor: blocked || (!picked && pickLimitReached) ? "not-allowed" : "pointer",
-                            opacity: blocked || (!picked && pickLimitReached) ? 0.6 : 1,
-                          }}
-                          title={blocked ? "Ya está en el otro grupo" : picked ? "Quitar" : pickingReserves ? "Añadir a reservas" : "Añadir al reparto"}
-                        >
-                          <div
-                            style={{
-                              width: 44,
-                              height: 44,
-                              borderRadius: 12,
-                              overflow: "hidden",
-                              background: "var(--picker-image)",
-                              border: "1px solid var(--picker-border)",
-                              flex: "0 0 auto",
-                            }}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={setup.photoUrl} alt={setup.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          </div>
-
-                          <div style={{ display: "grid", gap: 2 }}>
-                            <div style={{ fontWeight: 850 }}>
-                              {setup.name} {picked ? "✓" : ""}
-                            </div>
-                            <div style={{ fontSize: 12, opacity: picked ? 0.85 : 0.7 }}>Custom</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                </div>
-
-                {s.id === CUSTOM_SEASON_ID && customList.length === 0 && (
-                  <div style={{ marginTop: 10, opacity: 0.75 }}>Aún no tienes concursantes custom.</div>
-                )}
-                {s.id !== CUSTOM_SEASON_ID && s.contestants.length === 0 && (
-                  <div style={{ marginTop: 10, opacity: 0.75 }}>Esta edición aún no tiene concursantes.</div>
-                )}
-              </details>
-            );
+          {(["gh", "ghvip"] as const).map(category => {
+            const seasons = matchingSeasons.filter(s => s.id !== CUSTOM_SEASON_ID && (s.id.startsWith("ghvip") ? "ghvip" : "gh") === category);
+            if (!seasons.length) return null;
+            return <details key={category + (query ? "-search" : "-browse")} open={!!query} style={{ border: "1px solid var(--picker-border)", borderRadius: 14, padding: 12 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 900 }}>{category === "gh" ? "Gran Hermano" : "Gran Hermano VIP"}</summary>
+              <div style={{ display: "grid", gap: 10, marginTop: 12 }}>{seasons.map(renderSeason)}</div>
+            </details>;
           })}
+          {matchingSeasons.filter(s => s.id === CUSTOM_SEASON_ID).map(renderSeason)}
+
         </div>
       </section>
 
