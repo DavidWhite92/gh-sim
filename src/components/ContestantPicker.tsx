@@ -64,12 +64,12 @@ const SEASONS: SeasonDef[] = [
       { name: "Íñigo G.", file: "Iñigo.gif", gender: "M" },
       { name: "Marina", file: "Marina.gif", gender: "F" },
       { name: "Vanessa P.", file: "Vanessa.gif", gender: "F" },
-      { name: "Mónica", file: "Monica.gif", gender: "F" },
+      { name: "Mónica R.", file: "Monica.gif", gender: "F" },
       { name: "Nacho R.", file: "NachoRodriguez.gif", gender: "M" },
       { name: "Jorge B.", file: "JorgeBerrocal.gif", gender: "M" },
       { name: "Silvia C.", file: "Silvia.gif", gender: "F" },
       { name: "Israel P.", file: "Israel.gif", gender: "M" },
-      { name: "María José", file: "MariaJose.gif", gender: "F" },
+      { name: "Mª José", file: "MariaJose.gif", gender: "F" },
     ],
   },
   {
@@ -613,7 +613,27 @@ const SEASONS: SeasonDef[] = [
       { name: "Toño S.", file: "Toñoghvip5.gif", gender: "M" },
     ],
   },
-
+  {
+    id: "ghvip6",
+    label: "GH VIP 6",
+    contestants: [
+      { name: "Miriam", file: "Miriamghvip6.gif", gender: "F" },
+      { name: "Koala", file: "Koalaghvip6.gif", gender: "M" },
+      { name: "Asraf", file: "Asrafghvip6.gif", gender: "M" },
+      { name: "Mónica H.", file: "Monicaghvip6.gif", gender: "F" },
+      { name: "Tony Spina", file: "Tonyghvip6.gif", gender: "M" },
+      { name: "Aurah", file: "Auraghvip6.gif", gender: "F" },
+      { name: "Makoke", file: "Makokeghvip6.gif", gender: "F" },
+      { name: "Ángel Garó", file: "Ángelghvip6.gif", gender: "M" },
+      { name: "Verdeliss", file: "Verdelissghvip6.gif", gender: "F" },
+      { name: "Darek", file: "Darekghvip6.gif", gender: "M" },
+      { name: "Techi", file: "Techighvip6.gif", gender: "F" },
+      { name: "Omar M.", file: "Omarghvip6.gif", gender: "M" },
+      { name: "Aramís", file: "Aramísghvip6.gif", gender: "F" },
+      { name: "Isa", file: "Isaghvip6.gif", gender: "F" },
+      { name: "Oriana", file: "Orianaghvip6.gif", gender: "F" },
+    ],
+  },
 ];
 
 
