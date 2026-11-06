@@ -533,3 +533,10 @@ html:not([data-theme="light"]) .homePage .card { background: rgba(24,28,39,var(-
 html[data-theme="light"] .musicControls { background: #fff; color: #181c27; }
 
 html[data-theme="light"] .contestantPicker { --random-filter-bg: #fff; }
+
+.saveGameDialog { width: min(440px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 22px; border: 1px solid #777; border-radius: 16px; background: #151e2d; color: #fff; }
+.saveGameDialog::backdrop { background: rgb(0 0 0 / .6); }
+html[data-theme="light"] .saveGameDialog { background: #fff; color: #111; }
+.saveGameDialog input { display: block; width: 100%; margin: 10px 0 18px; padding: 10px; font-size: 20px; letter-spacing: .15em; }
+.saveGameDialog .btn { margin: 8px 6px 0 0; }
+.saveCode { display: block; font-size: 28px; font-weight: 800; letter-spacing: .15em; user-select: all; }

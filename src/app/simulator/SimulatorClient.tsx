@@ -1,5 +1,7 @@
 "use client";
 
+import { SaveGameButton, LoadGameButton } from "@/components/SaveGameControls";
+import { fetchSavedGame, type SavedGame } from "@/lib/savedGame";
 import { SceneBackground, type Scene } from "@/components/SceneBackground";
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -60,52 +62,56 @@ export default function SimulatorClient() {
     }
   }, [setup]);
 
-  const [state, setState] = useState<GameState | null>(initial);
-
-
-
+  const loadCode = params.get("load")?.trim().toUpperCase() ?? "";
+  const [loaded, setLoaded] = useState<{ code: string; game?: SavedGame; error?: string } | null>(null);
   useEffect(() => {
-    if (initial) setState(initial);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setup]);
+    if (!loadCode) return;
+    const controller = new AbortController();
+    fetchSavedGame(loadCode, controller.signal).then(game => {
+      if (!controller.signal.aborted) setLoaded({ code: loadCode, game });
+    }).catch(error => {
+      if (!controller.signal.aborted) setLoaded({ code: loadCode, error: error instanceof Error ? error.message : "No se pudo cargar la partida." });
+    });
+    return () => controller.abort();
+  }, [loadCode]);
+  if (loadCode) {
+    if (loaded?.code !== loadCode) return <section className="card cardPad" role="status">Cargando temporada…</section>;
+    if (!loaded.game) return <section className="card cardPad"><p role="alert">{loaded.error}</p><LoadGameButton /><button className="btn" onClick={() => router.push("/")}>Volver al inicio</button></section>;
+    return <SimulationSession key={`saved-${loadCode}`} initial={loaded.game.state} progress={loaded.game.progress} />;
+  }
+  if (!initial) return <section className="card cardPad">No hay configuración. <button className="btn" onClick={() => router.push("/")}>Volver</button></section>;
+  return <SimulationSession key={setup} initial={initial} />;
+}
 
-  const [withdrawalStep, setWithdrawalStep] = useState(0);
-  const [repechageStep, setRepechageStep] = useState(0);
+function SimulationSession({ initial, progress }: { initial: GameState; progress?: SavedGame["progress"] }) {
+  const router = useRouter();
+  const [state, setState] = useState<GameState>(initial);
+
+  const [withdrawalStep, setWithdrawalStep] = useState(progress?.withdrawalStep ?? 0);
+  const [repechageStep, setRepechageStep] = useState(progress?.repechageStep ?? 0);
 
   // Expulsión reveal
-  const [evictStep, setEvictStep] = useState(0); // 0..5 text, 5 name, 6 done
-  const [evictDoneForGala, setEvictDoneForGala] = useState<number | null>(null);
+  const [evictStep, setEvictStep] = useState(progress?.evictStep ?? 0); // 0..5 text, 5 name, 6 done
+  const [evictDoneForGala, setEvictDoneForGala] = useState<number | null>(progress?.evictDoneForGala ?? null);
 // Final reveal (3º y ganador)
-  const [finalPhase, setFinalPhase] = useState<"fourth" | "third" | "winner" | "done">("third");
-  const [finalStep, setFinalStep] = useState(0); // 0..5 lines, 5 name, 6 done for phase
-  const [finalDoneForGala, setFinalDoneForGala] = useState<number | null>(null);
+  const [finalPhase, setFinalPhase] = useState<"fourth" | "third" | "winner" | "done">(progress?.finalPhase ?? "third");
+  const [finalStep, setFinalStep] = useState(progress?.finalStep ?? 0); // 0..5 lines, 5 name, 6 done for phase
+  const [finalDoneForGala, setFinalDoneForGala] = useState<number | null>(progress?.finalDoneForGala ?? null);
 
 
   // Nominaciones reveal
-  const [revealNomCount, setRevealNomCount] = useState(0);
-  const [showDefinitives, setShowDefinitives] = useState(false);
-  const [showLeaderSave, setShowLeaderSave] = useState(false);
+  const [revealNomCount, setRevealNomCount] = useState(progress?.revealNomCount ?? 0);
+  const [showDefinitives, setShowDefinitives] = useState(progress?.showDefinitives ?? false);
+  const [showLeaderSave, setShowLeaderSave] = useState(progress?.showLeaderSave ?? false);
 
-  const [eventsSeen, setEventsSeen] = useState(true);
-  const [resultView, setResultView] = useState<"journey" | "popularity" | "relationships">("journey");
+  const [eventsSeen, setEventsSeen] = useState(progress?.eventsSeen ?? true);
+  const [resultView, setResultView] = useState<"journey" | "popularity" | "relationships">(progress?.resultView ?? "journey");
 
   // Table gating
-  const [showTable, setShowTable] = useState(false);
+  const [showTable, setShowTable] = useState(progress?.showTable ?? false);
 
   // Revisión de galas (evita spoilers: solo permite galas ya “cerradas”)
-  const [reviewGalaNumber, setReviewGalaNumber] = useState<number | null>(null);
-
-  if (!state) {
-    return (
-      <section className="card cardPad">
-        <div className="row">
-          <div style={{ fontWeight: 900 }}>No hay configuración</div>
-          <div className="spacer" />
-          <button className="btn" onClick={() => router.push("/")}>Volver</button>
-        </div>
-      </section>
-    );
-  }
+  const [reviewGalaNumber, setReviewGalaNumber] = useState<number | null>(progress?.reviewGalaNumber ?? null);
 
   const alphabeticalContestants = [...state.contestants].sort((a, b) =>
     a.name.localeCompare(b.name, "es", { sensitivity: "base" })
@@ -446,6 +452,11 @@ export default function SimulatorClient() {
             </button>
           )}
           <button className="btn" onClick={() => router.push("/")}>Reiniciar</button>
+          <SaveGameButton snapshot={{ version: 1, state, progress: {
+            withdrawalStep, repechageStep, evictStep, evictDoneForGala, finalPhase, finalStep,
+            finalDoneForGala, revealNomCount, showDefinitives, showLeaderSave, eventsSeen,
+            resultView, showTable, reviewGalaNumber,
+          } }} />
         </div>
 
         {state.gala === 1 && (

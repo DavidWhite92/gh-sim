@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadGameButton } from "./SaveGameControls";
 import { SeasonSettings } from "@/components/SeasonSettings";
 import { useEffect, useMemo, useState } from "react";
 import type { ContestantSetup, Gender, GameOptions } from "@/lib/types";
@@ -1094,6 +1095,7 @@ export function ContestantPicker({
           >
             Empezar
           </button>
+          <LoadGameButton />
         </div>
       </div>
 
