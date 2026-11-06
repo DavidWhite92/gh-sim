@@ -622,7 +622,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Asraf", file: "Asrafghvip6.gif", gender: "M" },
       { name: "Mónica H.", file: "Monicaghvip6.gif", gender: "F" },
       { name: "Tony Spina", file: "Tonyghvip6.gif", gender: "M" },
-      { name: "Aurah", file: "Auraghvip6.gif", gender: "F" },
+      { name: "Aurah", file: "Aurahghvip6.gif", gender: "F" },
       { name: "Makoke", file: "Makokeghvip6.gif", gender: "F" },
       { name: "Ángel Garó", file: "Ángelghvip6.gif", gender: "M" },
       { name: "Verdeliss", file: "Verdelissghvip6.gif", gender: "F" },
