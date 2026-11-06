@@ -1,4 +1,4 @@
-import { restoreGame } from "@/lib/saveRepository";
+import { restoreGame, SaveStorageUnavailable } from "@/lib/saveRepository";
 import { SAVE_CODE } from "@/lib/savedGame";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,5 +9,5 @@ export async function GET(_request: Request, context: { params: Promise<{ code: 
     const game = await restoreGame(code);
     if (!game) return Response.json({ error: "No hay ninguna partida con ese código. Compruébalo e inténtalo de nuevo." }, { status: 404 });
     return Response.json(game, { headers: { "Cache-Control": "no-store" } });
-  } catch { return Response.json({ error: "No se pudo acceder a las partidas guardadas. Inténtalo más tarde." }, { status: 503 }); }
+  } catch (error) { return Response.json({ error: error instanceof SaveStorageUnavailable ? error.message : "No se pudo acceder a las partidas guardadas. Inténtalo más tarde." }, { status: 503 }); }
 }
