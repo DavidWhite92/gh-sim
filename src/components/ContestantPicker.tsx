@@ -493,7 +493,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Daniela C.", file: "Danielagh19.gif", gender: "F" },
       { name: "Luis G.", file: "Luisgh19.gif", gender: "M" },
       { name: "Laura G.", file: "Lauragh19.gif", gender: "F" },
-      { name: "Manu", file: "Manugh19.gif", gender: "M" },
+      { name: "Manu V.", file: "Manugh19.gif", gender: "M" },
       { name: "Lucía R.", file: "Lucíagh19.gif", gender: "F" },
       { name: "Javier M.", file: "Javiergh19.gif", gender: "M" },
       { name: "Vanessa B.", file: "Vanessagh19.gif", gender: "F" },
@@ -685,7 +685,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Javier F.", file: "Javierghvip8.gif", gender: "M" },
       { name: "Karina", file: "Karinaghvip8.gif", gender: "F" },
       { name: "Sol", file: "Solghvip8.gif", gender: "F" },
-      { name: "Luca", file: "Lucaghvip8.gif", gender: "M" },
+      { name: "Luca D.", file: "Lucaghvip8.gif", gender: "M" },
       { name: "Pedro G.", file: "Pedroghvip8.gif", gender: "M" },
     ],
   },
@@ -706,6 +706,24 @@ const SEASONS: SeasonDef[] = [
       { name: "Fede", file: "Fedeghduo1.gif", gender: "M" },
     ],
   },
+  {
+    id: "ghduo2",
+    label: "GH DÚO 2",
+    contestants: [
+      { name: "Lucía S.", file: "Luciaghduo2.gif", gender: "F" },
+      { name: "Manuel", file: "Manuelghduo2.gif", gender: "M" },
+      { name: "Elena", file: "Elenaghduo2.gif", gender: "F" },
+      { name: "Mayka", file: "Maykaghduo2.gif", gender: "F" },
+      { name: "Keroseno", file: "Kerosenoghduo2.gif", gender: "M" },
+      { name: "Ana María", file: "AnaMariaghduo2.gif", gender: "F" },
+      { name: "Ivana", file: "Ivanaghduo2.gif", gender: "F" },
+      { name: "Efrén", file: "Efrenghduo2.gif", gender: "M" },
+      { name: "Marc", file: "Marcghduo2.gif", gender: "M" },
+      { name: "Finito", file: "Finitoghduo2.gif", gender: "M" },
+      { name: "Luca", file: "Lucaghduo2.gif", gender: "M" },
+    ],
+  },
+
 ];
 
 
