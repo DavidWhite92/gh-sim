@@ -17,6 +17,16 @@ type CustomStored = {
   gender?: Gender;
 };
 
+const CATEGORIES = [
+  { id: "gh", label: "Gran Hermano", shortLabel: "GH" },
+  { id: "ghvip", label: "Gran Hermano VIP", shortLabel: "GHVIP" },
+  { id: "ghduo", label: "GH DÚO", shortLabel: "GH DÚO" },
+] as const;
+function seasonCategory(id: string): typeof CATEGORIES[number]["id"] {
+  if (id.startsWith("ghduo")) return "ghduo";
+  return id.startsWith("ghvip") ? "ghvip" : "gh";
+}
+
 const CUSTOM_SEASON_ID = "custom";
 const LS_KEY = "ghsim_custom_contestants_v1";
 
@@ -580,7 +590,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Laura M.", file: "Lauraghvip4.gif", gender: "F" },
       { name: "Carlos L.", file: "Carlosghvip4.gif", gender: "M" },
       { name: "Rappel", file: "Rappelghvip4.gif", gender: "M" },
-      { name: "Alejandro", file: "Alejandroghvip4.gif", gender: "M" },
+      { name: "Alejandro N.", file: "Alejandroghvip4.gif", gender: "M" },
       { name: "Nicolás", file: "Nicolasghvip4.gif", gender: "M" },
       { name: "Raquel B.", file: "Raquelghvip4.gif", gender: "F" },
       { name: "Charlotte", file: "Charlotteghvip4.gif", gender: "F" },
@@ -679,6 +689,23 @@ const SEASONS: SeasonDef[] = [
       { name: "Pedro G.", file: "Pedroghvip8.gif", gender: "M" },
     ],
   },
+  {
+    id: "ghduo1",
+    label: "GH DÚO 1",
+    contestants: [
+      { name: "Mª Jesús", file: "MariaJesusghduo1.gif", gender: "F" },
+      { name: "Alejandro Al.", file: "Alejandroghduo1.gif", gender: "M" },
+      { name: "J. Miguel", file: "JuanMiguelghduo1.gif", gender: "M" },
+      { name: "Irene R.", file: "Ireneghduo1.gif", gender: "F" },
+      { name: "Antonio", file: "Antonioghduo1.gif", gender: "M" },
+      { name: "Yoli", file: "Yolighduo1.gif", gender: "F" },
+      { name: "Fortu", file: "Fortughduo1.gif", gender: "M" },
+      { name: "Julio", file: "Julioghduo1.gif", gender: "M" },
+      { name: "Candela", file: "Candelaghduo1.gif", gender: "F" },
+      { name: "Yurena", file: "Yurenaghduo1.gif", gender: "F" },
+      { name: "Fede", file: "Fedeghduo1.gif", gender: "M" },
+    ],
+  },
 ];
 
 
@@ -687,7 +714,7 @@ export function ContestantPicker({
 }: {
   onStart: (contestants: ContestantSetup[], seed: number, options: GameOptions) => void;
 }) {
-  const [randomCategories, setRandomCategories] = useState({ gh: true, ghvip: true });
+  const [randomCategories, setRandomCategories] = useState({ gh: true, ghvip: true, ghduo: true });
   const [showRandomFilters, setShowRandomFilters] = useState(false);
   const [seasonOptions, setSeasonOptions] = useState<GameOptions>({});
   const [reserves, setReserves] = useState<ContestantSetup[]>([]);
@@ -857,7 +884,7 @@ export function ContestantPicker({
   }
 
   const randomCandidates = SEASONS
-    .filter(s => randomCategories[s.id.startsWith("ghvip") ? "ghvip" : "gh"])
+    .filter(s => randomCategories[seasonCategory(s.id)])
     .flatMap(s => s.contestants.map(p => makeSetupFromSeasonPerson(s.id, p)))
     .filter(x => !selectedKeySet.has(`${x.seasonId}::${x.name}`) && !reserveKeySet.has(`${x.seasonId}::${x.name}`));
 
@@ -1071,12 +1098,12 @@ export function ContestantPicker({
             </button>
             {showRandomFilters && <fieldset id="random-category-filters" onKeyDown={event => { if (event.key === "Escape") setShowRandomFilters(false); }} style={{ position: "absolute", top: "100%", left: 0, zIndex: 10, width: 210, maxWidth: "calc(100vw - 32px)", padding: 14, borderRadius: 12, border: "1px solid var(--picker-border)", background: "var(--random-filter-bg, #151e2d)", color: "var(--picker-text)", margin: 0 }}>
               <legend style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clipPath: "inset(50%)" }}>Categorías aleatorias</legend>
-              {(["gh", "ghvip"] as const).map(category => <label key={category} style={{ display: "flex", gap: 8, padding: 6 }}>
+              {CATEGORIES.map(({ id: category, shortLabel }) => <label key={category} style={{ display: "flex", gap: 8, padding: 6 }}>
                 <input type="checkbox" checked={randomCategories[category]} onChange={event => setRandomCategories(previous => ({ ...previous, [category]: event.target.checked }))} />
-                {category === "gh" ? "GH" : "GHVIP"}
+                {shortLabel}
               </label>)}
               <small>Se aplica a participantes y reservas.</small>
-              {!randomCategories.gh && !randomCategories.ghvip && <p role="status">Activa una categoría para usar Random.</p>}
+              {!Object.values(randomCategories).some(Boolean) && <p role="status">Activa una categoría para usar Random.</p>}
             </fieldset>}
           </div>
 
@@ -1217,11 +1244,11 @@ export function ContestantPicker({
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          {(["gh", "ghvip"] as const).map(category => {
-            const seasons = matchingSeasons.filter(s => s.id !== CUSTOM_SEASON_ID && (s.id.startsWith("ghvip") ? "ghvip" : "gh") === category);
+          {CATEGORIES.map(({ id: category, label }) => {
+            const seasons = matchingSeasons.filter(s => s.id !== CUSTOM_SEASON_ID && seasonCategory(s.id) === category);
             if (!seasons.length) return null;
             return <details key={category + (query ? "-search" : "-browse")} open={!!query} style={{ border: "1px solid var(--picker-border)", borderRadius: 14, padding: 12 }}>
-              <summary style={{ cursor: "pointer", fontWeight: 900 }}>{category === "gh" ? "Gran Hermano" : "Gran Hermano VIP"}</summary>
+              <summary style={{ cursor: "pointer", fontWeight: 900 }}>{label}</summary>
               <div style={{ display: "grid", gap: 10, marginTop: 12 }}>{seasons.map(renderSeason)}</div>
             </details>;
           })}
