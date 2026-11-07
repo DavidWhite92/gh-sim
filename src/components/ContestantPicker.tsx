@@ -21,8 +21,10 @@ const CATEGORIES = [
   { id: "gh", label: "Gran Hermano", shortLabel: "GH" },
   { id: "ghvip", label: "Gran Hermano VIP", shortLabel: "GHVIP" },
   { id: "ghduo", label: "GH DÚO", shortLabel: "GH DÚO" },
+  { id: "ss", label: "Secret Story", shortLabel: "Secret Story" },
 ] as const;
 function seasonCategory(id: string): typeof CATEGORIES[number]["id"] {
+  if (id.startsWith("ss")) return "ss";
   if (id.startsWith("ghduo")) return "ghduo";
   return id.startsWith("ghvip") ? "ghvip" : "gh";
 }
@@ -127,7 +129,7 @@ const SEASONS: SeasonDef[] = [
     contestants: [
       { name: "Pedro", file: "Pedro.gif", gender: "M" },
       { name: "Désirée", file: "Desiree.gif", gender: "F" },
-      { name: "Rafa", file: "Rafa.gif", gender: "M" },
+      { name: "Rafa L.", file: "Rafa.gif", gender: "M" },
       { name: "Nacho U.", file: "Nacho.gif", gender: "M" },
       { name: "Matías", file: "Matias.gif", gender: "M" },
       { name: "Inma", file: "Inma.gif", gender: "F" },
@@ -470,7 +472,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Cristian F.", file: "Cristiangh18.gif", gender: "M" },
       { name: "Daniel", file: "Danielgh18.gif", gender: "M" },
       { name: "José Mª L.", file: "JoseMariagh18.gif", gender: "M" },
-      { name: "Juan Antonio", file: "JuanAntoniogh18.gif", gender: "M" },
+      { name: "Juan A.", file: "JuanAntoniogh18.gif", gender: "M" },
       { name: "Petra", file: "Petra.gif", gender: "F" },
       { name: "Eneme", file: "Eneme.gif", gender: "M" },
       { name: "Yolanda G.", file: "Yolandagh18.gif", gender: "F" },
@@ -553,7 +555,7 @@ const SEASONS: SeasonDef[] = [
       { name: "Tontxu", file: "Tontxughvip2.gif", gender: "M" },
       { name: "Rosario", file: "Rosarioghvip2.gif", gender: "F" },
       { name: "Adans", file: "Adansghvip2.gif", gender: "M" },
-      { name: "Isabel", file: "Isabelghvip2.gif", gender: "F" },
+      { name: "Isabel P.", file: "Isabelghvip2.gif", gender: "F" },
       { name: "Jacqueline", file: "Jacquelineghvip2.gif", gender: "F" },
       { name: "Lalo", file: "Laloghvip2.gif", gender: "M" },
       { name: "King", file: "Kinghvip2.gif", gender: "M" },
@@ -712,7 +714,7 @@ const SEASONS: SeasonDef[] = [
     contestants: [
       { name: "Lucía S.", file: "Luciaghduo2.gif", gender: "F" },
       { name: "Manuel G.", file: "Manuelghduo2.gif", gender: "M" },
-      { name: "Elena", file: "Elenaghduo2.gif", gender: "F" },
+      { name: "Elena R.", file: "Elenaghduo2.gif", gender: "F" },
       { name: "Mayka", file: "Maykaghduo2.gif", gender: "F" },
       { name: "Keroseno", file: "Kerosenoghduo2.gif", gender: "M" },
       { name: "Ana María", file: "AnaMariaghduo2.gif", gender: "F" },
@@ -720,7 +722,6 @@ const SEASONS: SeasonDef[] = [
       { name: "Efrén", file: "Efrenghduo2.gif", gender: "M" },
       { name: "Marc", file: "Marcghduo2.gif", gender: "M" },
       { name: "Finito", file: "Finitoghduo2.gif", gender: "M" },
-      { name: "Luca", file: "Lucaghduo2.gif", gender: "M" },
     ],
   },
   {
@@ -732,7 +733,6 @@ const SEASONS: SeasonDef[] = [
       { name: "Romina", file: "Rominaghduo3.gif", gender: "F" },
       { name: "José Mª A.", file: "JoseMariaghduo3.gif", gender: "M" },
       { name: "Álex Guita", file: "Alexghduo3.gif", gender: "M" },
-      { name: "Miguel F.", file: "Miguelghduo3.gif", gender: "M" },
       { name: "Manuel C.", file: "Manuelghduo3.gif", gender: "M" },
       { name: "Jeimy", file: "Jeimyghduo3.gif", gender: "F" },
       { name: "Ana Herminia", file: "AnaHerminiaghduo3.gif", gender: "F" },
@@ -757,6 +757,50 @@ const SEASONS: SeasonDef[] = [
       { name: "John Guts", file: "Johnghduo4.gif", gender: "M" },
     ],
   },
+  {
+    id: "ss1",
+    label: "Secret Story 1",
+    contestants: [
+      { name: "Luca O.", file: "Lucass1.gif", gender: "M" },
+      { name: "Cris Porta", file: "Cristinass1.gif", gender: "F" },
+      { name: "Gemeliers", file: "Gemeliersss1.gif", gender: "M" },
+      { name: "Luis Rollán", file: "Luisss1.gif", gender: "M" },
+      { name: "Sandra P.", file: "Sandrass1.gif", gender: "F" },
+      { name: "Julen", file: "Julenss1.gif", gender: "M" },
+      { name: "Miguel F.", file: "Miguelss1.gif", gender: "M" },
+      { name: "Isabel R.", file: "Isabelss1.gif", gender: "F" },
+      { name: "Cynthia", file: "Cynthiass1.gif", gender: "F" },
+      { name: "José A.", file: "JoseAntonioss1.gif", gender: "M" },
+      { name: "Lucía", file: "Luciass1.gif", gender: "F" },
+      { name: "Emmy", file: "Emmyss1.gif", gender: "F" },
+      { name: "Fiama", file: "Fiamass1.gif", gender: "F" },
+      { name: "Sofía C.", file: "Sofiass1.gif", gender: "F" },
+      { name: "Bigote", file: "Bigotess1.gif", gender: "M" },
+      { name: "Chimo", file: "Chimoss1.gif", gender: "M" },
+    ],
+  },
+  {
+    id: "ss2",
+    label: "Secret Story 2",
+    contestants: [
+      { name: "Rafa M.", file: "Rafass2.gif", gender: "M" },
+      { name: "Marta J.", file: "Martass2.gif", gender: "F" },
+      { name: "Adrián T.", file: "Adrianss2.gif", gender: "M" },
+      { name: "Carlos P.", file: "Carlosss2.gif", gender: "M" },
+      { name: "Cora", file: "Corass2.gif", gender: "F" },
+      { name: "Colchero", file: "Colcheross2.gif", gender: "M" },
+      { name: "Carmen N.", file: "Carmenss2.gif", gender: "F" },
+      { name: "Laila", file: "Lailass2.gif", gender: "F" },
+      { name: "Alatzne", file: "Alatzness2.gif", gender: "F" },
+      { name: "Nissy", file: "Nissyss2.gif", gender: "F" },
+      { name: "Virginia", file: "Virginiass2.gif", gender: "F" },
+      { name: "Brenda", file: "Brendass2.gif", gender: "F" },
+      { name: "Kenny", file: "Kennyss2.gif", gender: "M" },
+      { name: "Alberto", file: "Albertoss2.gif", gender: "M" },
+      { name: "Elena", file: "Elenass2.gif", gender: "F" },
+      { name: "Héctor", file: "Hectorss2.gif", gender: "M" },
+    ],
+  },
 
 ];
 
@@ -766,7 +810,7 @@ export function ContestantPicker({
 }: {
   onStart: (contestants: ContestantSetup[], seed: number, options: GameOptions) => void;
 }) {
-  const [randomCategories, setRandomCategories] = useState({ gh: true, ghvip: true, ghduo: true });
+  const [randomCategories, setRandomCategories] = useState({ gh: true, ghvip: true, ghduo: true, ss: true });
   const [showRandomFilters, setShowRandomFilters] = useState(false);
   const [seasonOptions, setSeasonOptions] = useState<GameOptions>({});
   const [reserves, setReserves] = useState<ContestantSetup[]>([]);
