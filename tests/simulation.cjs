@@ -307,6 +307,10 @@ console.log('PASS: arrival exemption, no withdrawals at five or fewer, departed 
 
 // Custom season mechanics across every nomination/final/privilege combination.
 const {nominationRules}=load('mechanics');
+assert.equal(nominationRules('gh24',4).points.join(), '1,1');
+assert.equal(nominationRules('gh24',5).points.join(), '1,1,1');
+assert.equal(nominationRules('gh24',4).min, 2);
+assert.equal(nominationRules('gh24',5).min, 3);
 let customSeasons=0;
 const randomModes=new Set(),randomFinals=new Set(),randomRepechages=new Set();
 for(const mode of ['traditional','gh24','gh1','positive'])for(const finalSize of [3,4])
@@ -336,7 +340,7 @@ for(let seed=1;seed<=8;seed++) {
       const expected=ordered.filter(([,pts])=>mode==='positive'?pts<=cutoff:pts>=cutoff).map(([id])=>id).sort();
       assert.equal([...gala.provisionalNominees].sort().join(),expected.join());
       if(gala.events.leader)assert(!gala.finalNominees.includes(gala.events.leader.savedId));
-      if(state.activeIds.length===finalSize+1)assert.equal(rules.points.length,mode==='gh1'||(mode==='traditional'&&finalSize===3)?2:3);
+      if(state.activeIds.length===finalSize+1)assert.equal(rules.points.length,mode==='gh1'||(['traditional','gh24'].includes(mode)&&finalSize===3)?2:3);
     }
     if(state.finalReady){assert.equal(state.activeIds.length,finalSize);assert(state.activeIds.every(id=>state.timeline[id].at(-1)==='Finalista'));}
     if(state.withdrawals.length>prev.withdrawals.length&&state.withdrawals.at(-1).phase==='before'&&prev.pendingNominees.length===2)

@@ -29,7 +29,7 @@ export function resolveMechanics(options: GameOptions, seed: number) {
 
 export function nominationRules(mode: NominationMode, activeCount: number) {
   if (mode === "gh1") return { points: [1, 1], min: 2 };
-  if (mode === "gh24") return { points: [1, 1, 1], min: 3 };
+  if (mode === "gh24") return { points: activeCount === 4 ? [1, 1] : [1, 1, 1], min: activeCount === 4 ? 2 : 3 };
   if (mode === "traditional" && activeCount === 4) return { points: [2, 1], min: 2 };
   return { points: [3, 2, 1], min: 3 };
 }

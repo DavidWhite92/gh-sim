@@ -73,7 +73,7 @@ export function SeasonSettings({ options, onChange, reserveCount, participantCou
       </fieldset>
       <fieldset><legend>Nominaciones</legend>
         <Choices name="nominationMode" value={options.nominationMode ?? "traditional"}
-          options={[{ value: "traditional", label: "Tradicional · 3, 2 y 1" }, { value: "gh24", label: "GH2–GH4 · 1 punto a 3 personas" },
+          options={[{ value: "traditional", label: "Tradicional · 3, 2 y 1" }, { value: "gh24", label: "GH2–GH4 · 1 punto a 3 personas (con 4 participantes: a 2 y mínimo 2 nominados)" },
             { value: "gh1", label: "GH1 · 1 punto a 2 personas" }, { value: "positive", label: "Positivo · 3, 2 y 1 para quedarse" },
             { value: "randomPositive", label: "Positivo Aleatorio · tradicional con galas positivas ocasionales" }, { value: "random", label: "Aleatorio · un modo para toda la temporada" }]}
           onChange={value => update({ nominationMode: value })} />
