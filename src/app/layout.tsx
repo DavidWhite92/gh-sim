@@ -79,7 +79,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="container">{children}</main>
 
             <footer className="footer">
-              <span>© {new Date().getFullYear()} · Simulador GH</span>
+              <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center", lineHeight: 1.6 }}>
+                <p style={{ margin: "0 0 8px", fontWeight: 700 }}>© {new Date().getFullYear()} Simulador GH · Proyecto de fans no oficial y sin ánimo de lucro.</p>
+                <p style={{ margin: 0 }}>Los nombres y marcas de los programas, sus logotipos, imágenes, fotografías, música y demás materiales de terceros pertenecen a sus respectivos titulares y no son propiedad de Simulador GH. Este proyecto se ha creado con fines de entretenimiento y no está afiliado, patrocinado ni avalado por los titulares de dichos derechos.</p>
+                <p style={{ margin: "8px 0 0" }}>Para contacto o sugerencias, escribe a <a href="mailto:simuladorgh@gmail.com" style={{ color: "inherit", textDecoration: "underline" }}>simuladorgh@gmail.com</a>.</p>
+              </div>
             </footer>
           </div>
           </MusicProvider>
