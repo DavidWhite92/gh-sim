@@ -801,7 +801,19 @@ const SEASONS: SeasonDef[] = [
       { name: "Héctor", file: "Hectorss2.gif", gender: "M" },
     ],
   },
-
+  {
+    id: "ghvip9",
+    label: "GH VIP 9",
+    contestants: [
+      { name: "Carlos C.", file: "Carlosghvip9.gif", gender: "M" },
+      { name: "Karmele", file: "Karmeleghvip9.gif", gender: "F" },
+      { name: "Katrin", file: "Katringhvip9.gif", gender: "F" },
+      { name: "Paloma", file: "Palomaghvip9.gif", gender: "F" },
+      { name: "Pipi", file: "Pipighvip9.gif", gender: "M" },
+      { name: "Raquel M.", file: "Raquelghvip9.gif", gender: "F" },
+      { name: "Robert", file: "Robertghvip9.gif", gender: "M" },
+    ],
+  },
 ];
 
 
@@ -1161,10 +1173,9 @@ export function ContestantPicker({
 
   return (
     <div className="contestantPicker" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14, maxWidth: 980 }}>
-      <h1 style={{ margin: "12px 0", lineHeight: 0 }}>
+      <h1 className="brandHero">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/SimuladorGHLogo.gif" alt="Simulador Gran Hermano" width={304} height={90}
-          style={{ display: "block", width: 304, maxWidth: "100%", height: "auto", margin: "0 auto" }} />
+        <img className="brandHeroLogo" src="/LogoGHSimulador_Color.png" alt="Gran Hermano Simulador" width={1774} height={887} />
       </h1>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -1211,7 +1222,7 @@ export function ContestantPicker({
               borderRadius: 12,
               border: "1px solid var(--picker-border)",
               cursor: canStart ? "pointer" : "not-allowed",
-              background: canStart ? "var(--picker-primary)" : "var(--picker-disabled)",
+              background: canStart ? "var(--brand-red)" : "var(--picker-disabled)",
               color: "#fff",
               fontWeight: 800,
             }}

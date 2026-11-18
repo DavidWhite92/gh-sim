@@ -540,3 +540,26 @@ html[data-theme="light"] .saveGameDialog { background: #fff; color: #111; }
 .saveGameDialog input { display: block; width: 100%; margin: 10px 0 18px; padding: 10px; font-size: 20px; letter-spacing: .15em; }
 .saveGameDialog .btn { margin: 8px 6px 0 0; }
 .saveCode { display: block; font-size: 28px; font-weight: 800; letter-spacing: .15em; user-select: all; }
+
+/* Identidad del nuevo logo: azul eléctrico, azul marino y rojo. */
+:root { --brand-blue: #005bea; --brand-navy: #06165c; --brand-red: #d50026; --brand-action: linear-gradient(115deg, #0647b7 0%, #202071 55%, #c50028 100%); }
+.brandHero { margin: 12px auto 20px; width: min(540px, 100%); line-height: 0; }
+.brandHeroLogo { display: block; width: 100%; height: auto; }
+html:not([data-theme="light"]) .brandHeroLogo { filter: drop-shadow(1px 0 0 rgba(255,255,255,.65)) drop-shadow(-1px 0 0 rgba(255,255,255,.65)) drop-shadow(0 1px 0 rgba(255,255,255,.65)) drop-shadow(0 -1px 0 rgba(255,255,255,.65)); }
+html .contestantPicker, html[data-theme="light"] .contestantPicker {
+  --picker-primary: var(--brand-action);
+  --picker-focus: #5996ff;
+}
+html:not([data-theme="light"]) .contestantPicker { --picker-selected: #193c73; --picker-border: #435b84; }
+html[data-theme="light"] .contestantPicker { --picker-selected: #dce9ff; --picker-border: #c5d1e7; }
+html .btn, html[data-theme="light"] .btn { border-color: #5472a6; background: #1b3154; color: #f2f6ff; transition: background-color .15s, box-shadow .15s; }
+html[data-theme="light"] .btn { background: #edf3ff; color: #103d88; border-color: #bdcdeb; }
+html .btn:hover, html[data-theme="light"] .btn:hover { background: #dbe8ff; color: #103d88; }
+html .btn.btnPrimary, html[data-theme="light"] .btn.btnPrimary,
+html .btn[aria-pressed="true"], html[data-theme="light"] .btn[aria-pressed="true"] { background: var(--brand-action); color: #fff; border-color: #3154a3; }
+html .btn.btnPrimary:hover { box-shadow: 0 3px 14px rgb(0 76 210 / .3); }
+button:focus-visible, summary:focus-visible { outline: 3px solid #5996ff; outline-offset: 3px; }
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--brand-blue); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.contestantPicker button.seasonSettingsToggle, .contestantPicker button.seasonSettingsToggle:hover { background: var(--brand-action); color: #fff; border-color: #527bc1; box-shadow: 0 5px 20px rgb(0 65 175 / .22); }
+@media (max-width: 600px) { .brandHero { margin-bottom: 12px; } }
