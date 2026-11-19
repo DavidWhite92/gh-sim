@@ -806,8 +806,10 @@ const SEASONS: SeasonDef[] = [
     label: "GH VIP 9",
     contestants: [
       { name: "Carlos C.", file: "Carlosghvip9.gif", gender: "M" },
+      { name: "Lía", file: "Liaghvip9.gif", gender: "F" },
       { name: "Karmele", file: "Karmeleghvip9.gif", gender: "F" },
       { name: "Katrin", file: "Katringhvip9.gif", gender: "F" },
+      { name: "Nacho d.B.", file: "Nachoghvip9.gif", gender: "M" },
       { name: "Náyades", file: "Nayadesghvip9.gif", gender: "F" },
       { name: "Paloma", file: "Palomaghvip9.gif", gender: "F" },
       { name: "Pipi", file: "Pipighvip9.gif", gender: "M" },
